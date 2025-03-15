@@ -6,6 +6,8 @@ readme = "README.md"
 license = {file = "LICENSE.txt"}
 
 [project.urls]
+Repository = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
+#  Used by Comfy Registry https://comfyregistry.org
 bugs = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/issues"
 homepage = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
 
