@@ -1,0 +1,15 @@
+[project]
+name = "ComfyUI_Fens_Simple_Nodes"
+version = "0.0.1"
+description = "Simple nodes for ComfyUI"
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+
+[project.urls]
+bugs = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/issues"
+homepage = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
+
+[tool.comfy]
+PublisherId = "Taithrah"
+DisplayName = "Fens-Simple-Nodes"
+Icon = ""
