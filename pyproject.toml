@@ -10,6 +10,6 @@ bugs = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/issues"
 homepage = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
 
 [tool.comfy]
-PublisherId = "Taithrah"
+PublisherId = "taithrah"
 DisplayName = "Fens-Simple-Nodes"
 Icon = ""
