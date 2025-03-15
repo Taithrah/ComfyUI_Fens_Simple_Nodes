@@ -1,6 +1,6 @@
 # Fen's Simple Nodes
 
-This provides very simple nodes.
+The aim of this repository is to eventually offers a suite of custom nodes for ComfyUI that focus on simplicity and utility.
 
 > [!NOTE]
 > This projected was created to learn how to program ComfyUI nodes. So far this includes a single node with the plan to eventually add more.
