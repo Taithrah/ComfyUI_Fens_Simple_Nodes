@@ -1,10 +1,9 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Only create as report if you are sure a bug was created by this repository
 title: ''
-labels: ''
+labels: 'Bug'
 assignees: ''
-
 ---
 
 **Describe the bug**
@@ -16,10 +15,10 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Desktop (please complete the following information):**
+**Information:**
  - Simple Nodes version:
  - Python version:
  - Operating System:
 
-**Additional context**
-If there was a crash, please include the traceback here
+**Additional**
+Please include the output from your terminal here.
