@@ -29,7 +29,7 @@ class FensTokenCounter:
     RETURN_TYPES = ("INT",)
     RETURN_NAMES = ("total_token_count",)
     OUTPUT_TOOLTIPS = ("The token count using the selected encoder",)
-    CATEGORY = "Fen's Simple Nodes"
+    CATEGORY = "Fens_Simple_Nodes"
     FUNCTION = "count_tokens"
     DESCRIPTION = (
         "Count tokens in a prompt using the selected encoder to return a total count."

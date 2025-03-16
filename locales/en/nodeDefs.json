@@ -1,0 +1,10 @@
+{
+    "FensTokenCounter": {
+        "display_name": "Fens Token Counter",
+        "inputs": {
+            "encoders": {
+                "name": "encoders"
+            }
+        }
+    }
+}
