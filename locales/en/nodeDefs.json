@@ -3,7 +3,8 @@
         "display_name": "Fens Token Counter",
         "inputs": {
             "encoders": {
-                "name": "encoders"
+                "name": "encoders",
+                "tooltip": "Select the encoder to use."
             }
         }
     }

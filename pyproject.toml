@@ -1,13 +1,12 @@
 [project]
 name = "ComfyUI_Fens_Simple_Nodes"
-version = "0.0.2"
-description = "Simple nodes for ComfyUI"
+version = "0.0.3"
+description = "Simple nodes for ComfyUI - Token Counter"
 readme = "README.md"
 license = {file = "LICENSE.txt"}
 
 [project.urls]
 Repository = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
-#  Used by Comfy Registry https://comfyregistry.org
 bugs = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/issues"
 homepage = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
 

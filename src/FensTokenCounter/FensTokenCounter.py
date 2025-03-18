@@ -8,41 +8,46 @@ class FensTokenCounter:
 
     @classmethod
     def INPUT_TYPES(cls):
-        encoders_list = list(ENCODER_MODEL_MAPPING.keys())
+        encoder_keys = list(ENCODER_MODEL_MAPPING.keys())
+        default_encoder = "CLIP-ViT-bigG-14-laion2B-39B-b160k"
+        if default_encoder not in encoder_keys:
+            default_encoder = encoder_keys[0]
+
         return {
             "required": {
-                "prompt": (
+                "encoder": (
+                    encoder_keys,
+                    {
+                        "default": default_encoder,
+                        "tooltip": "Select the encoder to use.",
+                    },
+                ),
+                "text": (
                     "STRING",
                     {
                         "multiline": True,
                         "dynamicPrompts": True,
-                        "tooltip": "The prompt to be counted.",
+                        "tooltip": "The prompt to count.",
                     },
                 ),
-                "encoders": (
-                    encoders_list,
-                    {"default": "CLIP-ViT-bigG-14-laion2B-39B-b160k"},
-                ),
-            },
+            }
         }
 
     RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("total_token_count",)
+    RETURN_NAMES = ("Total Tokens",)
     OUTPUT_TOOLTIPS = ("The token count using the selected encoder",)
     CATEGORY = "Fens_Simple_Nodes"
     FUNCTION = "count_tokens"
-    DESCRIPTION = (
-        "Count tokens in a prompt using the selected encoder to return a total count."
-    )
+    DESCRIPTION = "Get the token count of a prompt using the selected encoder. "
 
-    def count_tokens(self, prompt: str, encoders: List[str]) -> tuple:
-        if isinstance(encoders, str):
-            encoders = [encoders]
+    def count_tokens(self, text: str, encoder: List[str]) -> tuple:
+        if isinstance(encoder, str):
+            encoder = [encoder]
 
         tokenizer_cache = {}
         total_tokens = 0
 
-        for encoder in encoders:
+        for encoder in encoder:
             model_name = ENCODER_MODEL_MAPPING.get(encoder)
             if not model_name:
                 continue
@@ -58,7 +63,7 @@ class FensTokenCounter:
                     tokenizer_cache[model_name] = tokenizer
 
                 tokenizer = tokenizer_cache[model_name]
-                total_tokens += len(tokenizer.tokenize(prompt))
+                total_tokens += len(tokenizer.tokenize(text))
             except Exception:
                 continue
 
