@@ -20,4 +20,4 @@ The aim of this repository is to eventually offer a suite of custom nodes for Co
 
 ### Token Counter
 
-![TokenCounter](./examples/TokenCounter.webp)
+![TokenCounter](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCounter.webp)
