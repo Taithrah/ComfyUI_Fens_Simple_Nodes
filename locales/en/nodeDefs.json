@@ -2,8 +2,8 @@
     "FensTokenCounter": {
         "display_name": "Fens Token Counter",
         "inputs": {
-            "encoders": {
-                "name": "encoders",
+            "encoder": {
+                "name": "encoder",
                 "tooltip": "Select the encoder to use."
             }
         }
