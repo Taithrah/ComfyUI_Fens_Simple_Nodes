@@ -1,11 +1,11 @@
 from typing import List
+
 from transformers import AutoTokenizer
+
 from .encoder_mapping import ENCODER_MODEL_MAPPING
 
 
 class FensTokenCounter:
-    NAME = "Fens Token Counter"
-
     @classmethod
     def INPUT_TYPES(cls):
         encoder_keys = list(ENCODER_MODEL_MAPPING.keys())

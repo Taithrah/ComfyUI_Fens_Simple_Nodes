@@ -1,9 +1,9 @@
 [project]
 name = "ComfyUI_Fens_Simple_Nodes"
-version = "0.0.3"
+version = "0.0.4"
 description = "Simple nodes for ComfyUI - Token Counter"
 readme = "README.md"
-license = {file = "LICENSE.txt"}
+license = { file = "LICENSE.txt" }
 
 [project.urls]
 Repository = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"

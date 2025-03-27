@@ -5,6 +5,10 @@
             "encoder": {
                 "name": "encoder",
                 "tooltip": "Select the encoder to use."
+            },
+            "text": {
+                "name": "text",
+                "tooltip": "The prompt to count."
             }
         }
     }
