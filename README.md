@@ -7,17 +7,19 @@ The aim of this repository is to eventually offer a suite of custom nodes for Co
 
 ## Quickstart
 
-1. Install [ComfyUI](https://docs.comfy.org/get_started).
-1. Install [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager)
 1. Look for `Fens-Simple-Nodes` in ComfyUI-Manager. If you are installing manually, clone this repository under `ComfyUI/custom_nodes`. 
 1. Restart ComfyUI.
 
 # Features
-
-- A simple token counter with the ability to change encoders.
+- Token Counter
+- - Simple to use with the ability to change encoders.
+- - On par with webui a1111, forge, etc.
 
 # Examples
 
 ### Token Counter
 
-![TokenCounter](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCounter.webp)
+![TokenCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCount.webp)
+
+### Example of WebUI-Forge Counter
+![ForgeCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCount.webp)

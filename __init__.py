@@ -1,5 +1,3 @@
-"""Top-level package for ComfyUI_Fens_Simple_Nodes."""
-
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 
 from .src.FensTokenCounter.FensTokenCounter import FensTokenCounter

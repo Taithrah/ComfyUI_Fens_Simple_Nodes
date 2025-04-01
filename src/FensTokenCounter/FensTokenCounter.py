@@ -1,27 +1,28 @@
-from typing import List
-
-from transformers import AutoTokenizer
+from transformers import CLIPTokenizer, T5Tokenizer
 
 from .encoder_mapping import ENCODER_MODEL_MAPPING
 
 
+# ======== CLASS ========
 class FensTokenCounter:
     @classmethod
     def INPUT_TYPES(cls):
         encoder_keys = list(ENCODER_MODEL_MAPPING.keys())
-        default_encoder = "CLIP-ViT-bigG-14-laion2B-39B-b160k"
+        default_encoder = "CLIP BigG-14 (LAION, Patch 14)"
         if default_encoder not in encoder_keys:
             default_encoder = encoder_keys[0]
 
         return {
             "required": {
-                "encoder": (
+                "primary_encoder": (
                     encoder_keys,
                     {
                         "default": default_encoder,
-                        "tooltip": "Select the encoder to use.",
+                        "tooltip": "Select the primary encoder to use.",
                     },
-                ),
+                )
+            },
+            "optional": {
                 "text": (
                     "STRING",
                     {
@@ -30,41 +31,43 @@ class FensTokenCounter:
                         "tooltip": "The prompt to count.",
                     },
                 ),
-            }
+            },
         }
 
     RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("Total Tokens",)
-    OUTPUT_TOOLTIPS = ("The token count using the selected encoder",)
-    CATEGORY = "Fens_Simple_Nodes"
+    RETURN_NAMES = ("total_tokens",)
+    OUTPUT_NODE = True
+    OUTPUT_TOOLTIPS = ("The token count using the selected encoders.",)
+    CATEGORY = "Fens_Simple_Nodes/Utility"
     FUNCTION = "count_tokens"
-    DESCRIPTION = "Get the token count of a prompt using the selected encoder. "
+    DESCRIPTION = "Get the token count of a prompt using the selected encoders."
 
-    def count_tokens(self, text: str, encoder: List[str]) -> tuple:
-        if isinstance(encoder, str):
-            encoder = [encoder]
+    # ======== FUNCTION ========
+    def count_tokens(self, primary_encoder: str, text: str = "") -> tuple:
+        # If text is empty, return 0 tokens
+        if not text.strip():
+            return (0,)
 
         tokenizer_cache = {}
         total_tokens = 0
 
-        for encoder in encoder:
-            model_name = ENCODER_MODEL_MAPPING.get(encoder)
-            if not model_name:
-                continue
+        def get_tokenizer(model_name: str):
+            # Check if the model name contains "t5" to use T5Tokenizer
+            if "t5" in model_name.lower():
+                return T5Tokenizer.from_pretrained(model_name, legacy=True)
+            else:
+                return CLIPTokenizer.from_pretrained(model_name)
 
+        # Process primary encoder
+        model_name = ENCODER_MODEL_MAPPING.get(primary_encoder)
+        if model_name:
             try:
                 if model_name not in tokenizer_cache:
-                    # Universal application of legacy=False
-                    tokenizer = AutoTokenizer.from_pretrained(
-                        model_name,
-                        # legacy=False if "t5" in model_name.lower() else None  # Only set for T5
-                        legacy=False,  # Apply to all tokenizers
-                    )
-                    tokenizer_cache[model_name] = tokenizer
+                    tokenizer_cache[model_name] = get_tokenizer(model_name)
 
                 tokenizer = tokenizer_cache[model_name]
                 total_tokens += len(tokenizer.tokenize(text))
-            except Exception:
-                continue
+            except Exception as e:
+                print(f"Error processing primary encoder '{primary_encoder}': {e}")
 
         return (total_tokens,)
