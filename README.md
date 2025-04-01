@@ -14,6 +14,7 @@ The aim of this repository is to eventually offer a suite of custom nodes for Co
 - Token Counter
 - - Simple to use with the ability to change encoders.
 - - On par with webui a1111, forge, etc.
+- - - See examples below. 
 
 # Examples
 
