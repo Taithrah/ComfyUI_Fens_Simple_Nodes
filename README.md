@@ -22,4 +22,4 @@ The aim of this repository is to eventually offer a suite of custom nodes for Co
 ![TokenCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCount.webp)
 
 ### Example of WebUI-Forge Counter
-![ForgeCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCount.webp)
+![ForgeCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/ForgeCount.webp)
