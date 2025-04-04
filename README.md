@@ -1,9 +1,17 @@
-# Fen's Simple Nodes
+<div align="center">
+  
+[![English](https://img.shields.io/badge/Languages-English-blue)](README.md)
+[![License](https://img.shields.io/badge/License-GPL3.0-lightgreen)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+[![submit issue](https://img.shields.io/badge/Submit-issue-pink)](https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/issues)
 
-The aim of this repository is to eventually offer a suite of custom nodes for ComfyUI that focus on simplicity and utility.
+</div>
+
+---
+
+The aim of this repository is to offer a suite of custom nodes for ComfyUI that focus on simplicity and utility.
 
 > [!NOTE]
-> This projected was created to learn how to program ComfyUI nodes. So far this includes a single node with the plan to eventually add more.
+> At present, it only includes a token counter that counts similar to those in many WebUI versions.
 
 ## Quickstart
 
@@ -12,9 +20,9 @@ The aim of this repository is to eventually offer a suite of custom nodes for Co
 
 # Features
 - Token Counter
-- - Simple to use with the ability to change encoders.
-- - On par with webui a1111, forge, etc.
-- - - See examples below. 
+  - Simple to use with the ability to change encoders.
+  - On par with webui a1111, forge, etc.
+    - See examples below.
 
 # Examples
 
