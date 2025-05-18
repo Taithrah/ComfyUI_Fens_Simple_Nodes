@@ -3,7 +3,6 @@ from transformers import CLIPTokenizer, T5Tokenizer
 from .encoder_mapping import ENCODER_MODEL_MAPPING
 
 
-# ======== CLASS ========
 class FensTokenCounter:
     @classmethod
     def INPUT_TYPES(cls):
@@ -42,7 +41,6 @@ class FensTokenCounter:
     FUNCTION = "count_tokens"
     DESCRIPTION = "Get the token count of a prompt using the selected encoders."
 
-    # ======== FUNCTION ========
     def count_tokens(self, primary_encoder: str, text: str = "") -> tuple:
         # If text is empty, return 0 tokens
         if not text.strip():
