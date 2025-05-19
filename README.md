@@ -19,10 +19,16 @@ The aim of this repository is to offer a suite of custom nodes for ComfyUI that 
 1. Restart ComfyUI.
 
 # Features
-- Token Counter
+- **Token Counter**
   - Simple to use with the ability to change encoders.
   - On par with webui a1111, forge, etc.
-    - See examples below.
+
+- **Optimal Empty Latent**
+  - Specify your target aspect ratio in one of three formats: 
+    - Pixel dimensions: `WxH` (e.g. `1920x1080`)
+    - Ratio: `W:H` (e.g. `16:9`)
+    - Decimal: (e.g. `1.7778`)
+  - The tool will compute the closest compatible resolution to your target ratio, ensuring you get a usable output.
 
 # Examples
 
@@ -30,5 +36,8 @@ The aim of this repository is to offer a suite of custom nodes for ComfyUI that 
 
 ![TokenCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCount.webp)
 
-### Example of WebUI-Forge Counter
+### WebUI-Forge Example for comparison
 ![ForgeCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/ForgeCount.webp)
+
+### Optimal Empty Latent
+![OptimalEmptyLatent](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/OptimalEmptyLatent.webp)
