@@ -53,6 +53,11 @@ class OptiEmptyLatent:
             }
         }
 
+    RETURN_TYPES = ("LATENT", "INT", "INT")
+    RETURN_NAMES = ("latent", "width", "height")
+    CATEGORY = "Fens_Simple_Nodes/Latent"
+    FUNCTION = "opti_generate"
+
     @staticmethod
     def parse_ratio(ratio: str) -> float:
         """
@@ -85,10 +90,6 @@ class OptiEmptyLatent:
             raise ValueError(f"Height cannot be zero in ratio '{ratio}'")
         return w / h
 
-    RETURN_TYPES = ("LATENT",)
-    CATEGORY = "Fens_Simple_Nodes/Latent"
-    FUNCTION = "opti_generate"
-
     def __init__(self):
         self.device = intermediate_device()
 
@@ -102,28 +103,34 @@ class OptiEmptyLatent:
         # user‐friendly catch for bad ratio input & ratio limits
         try:
             ar = self.parse_ratio(ratio)
-        except ValueError:
-            print(
-                "Error: Invalid ratio format. Please use W:H, WxH, or a decimal value."
-            )
-            return ({"samples": None},)
+        except ValueError as e:
+            error_msg = f"⚠️ Invalid ratio: {str(e)}"
+            print(error_msg)
+            return {"ui": {"text": [error_msg]}, "result": ({"samples": None}, 0, 0)}
 
         if swap_ratio:
             ar = 1.0 / ar
 
-        # Needs a better idea of how to handle this
-        # Soft‐limit: warn if outside [0.25, 4.0], then clamp
-        #       MIN_AR, MAX_AR = 0.25, 4.0
-        #       if not (MIN_AR <= ar <= MAX_AR):
-        #           print(
-        #               f"Warning: aspect ratio {ar:.3f} out of practical range "
-        #               f"(clamping to [{MIN_AR}, {MAX_AR}])."
-        #           )
-        #           ar = max(MIN_AR, min(ar, MAX_AR))
+        try:
+            cfg = self.MODEL_CONFIG[latent_alignment]
+            w, h = self._find_resolution(ar, cfg["target_mp"], cfg["block"])
+        except ValueError as e:
+            error_msg = f"⚠️ Resolution error: {str(e)}"
+            print(error_msg)
+            return {"ui": {"text": [error_msg]}, "result": ({"samples": None}, 0, 0)}
 
-        cfg = self.MODEL_CONFIG[latent_alignment]
-        w, h = self._find_resolution(ar, cfg["target_mp"], cfg["block"])
-        return self._make_latent(w, h, batch_size)
+        latent = self._make_latent(w, h, batch_size)
+        return {"ui": {"text": [f"Optimal: {w}×{h}"]}, "result": (latent, w, h)}
+
+    def _error_result(self, message: str):
+        print(f"OptiEmptyLatent Error: {message}")
+        return {"ui": {"text": [message]}, "result": ({"samples": None}, 0, 0)}
+
+    def _success_result(self, latent, width: int, height: int):
+        return {
+            "ui": {"text": [f"Optimal: {width}×{height}"]},
+            "result": (latent, width, height),
+        }
 
     def _align(self, value: float, block: int) -> int:
         """Round to nearest multiple of block, min block."""
@@ -154,4 +161,4 @@ class OptiEmptyLatent:
     def _make_latent(self, w: int, h: int, bs: int):
         # latent dims are 1/8 of image
         shape = (bs, 4, h // 8, w // 8)
-        return ({"samples": torch.zeros(shape, device=self.device)},)
+        return {"samples": torch.zeros(shape, device=self.device)}
