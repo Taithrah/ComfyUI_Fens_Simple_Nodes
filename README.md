@@ -21,11 +21,11 @@ The aim of this repository is to offer a suite of custom nodes for ComfyUI that 
   - On par with webui a1111, forge, etc.
 
 - **Optimal Empty Latent**
+  - The tool will compute the closest compatible resolution to your target resolution or ratio, ensuring you get a output with minimal deformity (varies by checkpoint).
   - Specify your target aspect ratio in one of three formats: 
     - Pixel dimensions: `WxH` (e.g. `1920x1080`)
     - Ratio: `W:H` (e.g. `16:9`)
     - Decimal: (e.g. `1.7778`)
-  - The tool will compute the closest compatible resolution to your target ratio, ensuring you get a usable output.
 
 # Examples
 
