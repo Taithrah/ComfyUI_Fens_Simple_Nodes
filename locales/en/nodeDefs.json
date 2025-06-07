@@ -2,14 +2,57 @@
     "FensTokenCounter": {
         "display_name": "Fens Token Counter",
         "inputs": {
-            "encoder": {
-                "name": "encoder",
-                "tooltip": "Select the encoder to use."
+            "primary_encoder": {
+                "name": "primary_encoder",
+                "tooltip": "Select the primary encoder to use."
             },
             "text": {
                 "name": "text",
                 "tooltip": "The prompt to count."
             }
-        }
+        },
+        "outputs": {
+            "total_tokens": {
+                "name": "total_tokens",
+                "tooltip": "The token count using the selected encoders."
+            }
+        },
+        "description": "Get the token count of a prompt using the selected encoders."
+    },
+    "OptiEmptyLatent": {
+        "display_name": "Opti Empty Latent",
+        "inputs": {
+            "ratio": {
+                "name": "ratio",
+                "tooltip": "Aspect ratio of latent images. Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777)."
+            },
+            "swap_ratio": {
+                "name": "swap_ratio",
+                "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16)."
+            },
+            "latent_alignment": {
+                "name": "latent_alignment",
+                "tooltip": "Optimization preset for model type. See documentation for model-specific constraints."
+            },
+            "batch_size": {
+                "name": "batch_size",
+                "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
+            }
+        },
+        "outputs": {
+            "latent": {
+                "name": "latent",
+                "tooltip": "Generated latent tensor for the specified configuration."
+            },
+            "width": {
+                "name": "width",
+                "tooltip": "Optimal image width (pixels) for the selected aspect ratio and model."
+            },
+            "height": {
+                "name": "height",
+                "tooltip": "Optimal image height (pixels) for the selected aspect ratio and model."
+            }
+        },
+        "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, and other SD-like architectures."
     }
 }
