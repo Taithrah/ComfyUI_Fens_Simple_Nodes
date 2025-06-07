@@ -10,9 +10,6 @@
 
 The aim of this repository is to offer a suite of custom nodes for ComfyUI that focus on simplicity and utility.
 
-> [!NOTE]
-> At present, it only includes a token counter that counts similar to those in many WebUI versions.
-
 ## Quickstart
 
 1. Look for `Fens-Simple-Nodes` in ComfyUI-Manager. If you are installing manually, clone this repository under `ComfyUI/custom_nodes`. 
