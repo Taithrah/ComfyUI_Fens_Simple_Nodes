@@ -52,7 +52,7 @@ class OptiEmptyLatent:
             "channels": 4,
             "min_ar": 0.5,
             "max_ar": 3.5,
-            "desc": "SDXL experimental, block 16",
+            "desc": "SDXL experimental, block 32",
         },
         "SDXL (Div-16)": {
             "block": 16,
@@ -129,7 +129,7 @@ class OptiEmptyLatent:
     @staticmethod
     def parse_ratio(ratio: str) -> float:
         """
-        Parse an aspect‐ratio string into a float (width/height).
+        Parse an aspect-ratio string into a float (width/height).
 
         Supported formats:
           - "W:H"   (e.g. "16:9")
@@ -195,7 +195,7 @@ class OptiEmptyLatent:
         if not (min_ar <= ar <= max_ar):
             clamp_warning = (
                 f"⚠️ Ratio {ar:.3f} is outside recommended range for {latent_alignment} "
-                f"({min_ar}–{max_ar}). Clamping for best results."
+                f"({min_ar}-{max_ar}). Clamping for best results."
             )
             ar = max(min_ar, min(ar, max_ar))
 
@@ -211,7 +211,7 @@ class OptiEmptyLatent:
         actual_mp = (w * h) / 1e6
         actual_ar = round(w / h, 4)
         details = (
-            f"Optimal: {w}×{h} px\n"
+            f"Optimal: {w}x{h} px\n"
             f"Aspect Ratio: {actual_ar} (requested: {ratio})\n"
             f"Target MP: {cfg['target_mp']}, Actual MP: {actual_mp:.3f}\n"
             f"Block Size: {cfg['block']}, Channels: {cfg.get('channels', 4)}\n"
