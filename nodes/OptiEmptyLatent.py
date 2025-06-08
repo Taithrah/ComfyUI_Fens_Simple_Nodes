@@ -1,12 +1,15 @@
 import math
+import os
 
 import torch
+import yaml
 from comfy.model_management import intermediate_device
 
 
 class OptiEmptyLatent:
     """
     ComfyUI node: Choose optimal WxH for a given aspect ratio & MP target.
+    Supports exact resolution input when optimized resolution is disabled.
 
     Supports SD1, SD2, SDXL, and other SD-like architectures. Model configs include
     latent block size, target megapixels, channel count, and recommended aspect ratio ranges.
@@ -19,58 +22,10 @@ class OptiEmptyLatent:
     max_ar: Maximum recommended aspect ratio (width/height) for this model.
     """
 
-    MODEL_CONFIG = {
-        # Standard Stable Diffusion versions
-        "SD1 (512px)": {
-            "block": 8,
-            "target_mp": 0.262144,
-            "channels": 4,
-            "min_ar": 0.5,
-            "max_ar": 3.5,
-            "desc": "SD1.x, 512x512, 4-channel latent, block 8",
-        },
-        "SD2 (768px)": {
-            "block": 8,
-            "target_mp": 0.589824,
-            "channels": 4,
-            "min_ar": 0.5,
-            "max_ar": 3.5,
-            "desc": "SD2.x, 768x768, 4-channel latent, block 8",
-        },
-        "SDXL (1024px)": {
-            "block": 64,
-            "target_mp": 1.048576,
-            "channels": 4,
-            "min_ar": 0.5,
-            "max_ar": 3.5,
-            "desc": "SDXL, 1024x1024, 4-channel latent, block 64",
-        },
-        # Experimental variants
-        "SDXL (Div-32)": {
-            "block": 32,
-            "target_mp": 1.048576,
-            "channels": 4,
-            "min_ar": 0.5,
-            "max_ar": 3.5,
-            "desc": "SDXL experimental, block 32",
-        },
-        "SDXL (Div-16)": {
-            "block": 16,
-            "target_mp": 1.048576,
-            "channels": 4,
-            "min_ar": 0.5,
-            "max_ar": 3.5,
-            "desc": "SDXL experimental, block 16",
-        },
-        "SDXL (Div-8)": {
-            "block": 8,
-            "target_mp": 1.048576,
-            "channels": 4,
-            "min_ar": 0.5,
-            "max_ar": 3.5,
-            "desc": "SDXL experimental, block 8",
-        },
-    }
+    # Load model config from YAML
+    config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
+    with open(config_path, "r") as f:
+        MODEL_CONFIG = yaml.safe_load(f)
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -85,7 +40,8 @@ class OptiEmptyLatent:
                     {
                         "default": "1:1",
                         "tooltip": (
-                            "Aspect ratio of latent images. Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777)."
+                            "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777)."
+                            "Use WxH when 'Use Optimized Resolution' is FALSE."
                         ),
                     },
                 ),
@@ -93,9 +49,21 @@ class OptiEmptyLatent:
                     "BOOLEAN",
                     {
                         "default": False,
-                        "label_on": "Yes",
-                        "label_off": "No",
+                        "label_on": "TRUE",
+                        "label_off": "FALSE",
                         "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16).",
+                    },
+                ),
+                "use_optimized_resolution": (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                        "label_on": "TRUE",
+                        "label_off": "FALSE",
+                        "tooltip": (
+                            "TRUE: Automatically calculates best resolution for your aspect ratio\n"
+                            "FALSE: Use your own exact resolution (WxH format) - will be adjusted to work with the model"
+                        ),
                     },
                 ),
                 "latent_alignment": (
@@ -116,15 +84,6 @@ class OptiEmptyLatent:
                         "tooltip": (
                             "Number of latent images in batch (VRAM usage increases with batch size)."
                         ),
-                    },
-                ),
-                "bypass_target_mp": (
-                    "BOOLEAN",
-                    {
-                        "default": False,
-                        "label_on": "Yes",
-                        "label_off": "No",
-                        "tooltip": "Bypass target megapixels and use the nearest valid WxH for the aspect ratio.",
                     },
                 ),
             }
@@ -175,14 +134,58 @@ class OptiEmptyLatent:
         latent_alignment: str,
         batch_size: int = 1,
         swap_ratio: bool = False,
-        bypass_target_mp: bool = False,
+        use_optimized_resolution: bool = True,
     ):
         """
         Main node function: calculates optimal latent shape for requested ratio and model.
         Handles aspect ratio clamping, user feedback, and latent generation.
         Returns detailed UI output for user clarity.
         """
-        # Parse aspect ratio
+        # Get model config
+        cfg = self.MODEL_CONFIG[latent_alignment]
+        block = cfg["block"]
+
+        # Handle exact resolution mode (when optimized is disabled)
+        if not use_optimized_resolution:
+            try:
+                # Parse resolution from string
+                if "x" in ratio.lower():
+                    parts = ratio.lower().split("x", 1)
+                elif ":" in ratio:
+                    parts = ratio.split(":", 1)
+                else:
+                    raise ValueError("Must use WxH or W:H format for exact resolution")
+
+                if len(parts) != 2:
+                    raise ValueError("Invalid format: expected WxH or W:H")
+
+                w_val = int(parts[0].strip())
+                h_val = int(parts[1].strip())
+
+                if swap_ratio:
+                    w_val, h_val = h_val, w_val
+
+                # Align to model's block size
+                w = self._align(w_val, block)
+                h = self._align(h_val, block)
+
+                # Create latent with exact resolution
+                latent = self._make_latent(w, h, batch_size, cfg.get("channels", 4))
+                actual_ar = round(w / h, 4)
+                details = (
+                    f"Exact Resolution: {w}x{h} px\n"
+                    f"Aspect Ratio: {actual_ar}\n"
+                    f"Block Size: {block}, Channels: {cfg.get('channels', 4)}\n"
+                    f"Model: {cfg.get('desc', latent_alignment)}"
+                )
+                return self._success_result(latent, w, h, details)
+
+            except Exception as e:
+                error_msg = f"⚠️ Exact resolution error: {str(e)}"
+                print(error_msg)
+                return self._error_result(error_msg)
+
+        # Optimized resolution mode (default behavior)
         try:
             ar = self.parse_ratio(ratio)
         except ValueError as e:
@@ -194,7 +197,6 @@ class OptiEmptyLatent:
             ar = 1.0 / ar
 
         # Get model config and clamp aspect ratio if necessary
-        cfg = self.MODEL_CONFIG[latent_alignment]
         min_ar, max_ar = cfg.get("min_ar", 0.4), cfg.get("max_ar", 2.5)
 
         # Swap min/max bounds if ratio was swapped
@@ -205,15 +207,12 @@ class OptiEmptyLatent:
         if not (min_ar <= ar <= max_ar):
             clamp_warning = (
                 f"⚠️ Ratio {ar:.3f} is outside recommended range for {latent_alignment} "
-                f"({min_ar}-{max_ar}). Clamping for best results."
+                f"({min_ar:.2f}-{max_ar:.2f}). Clamping for best results."
             )
             ar = max(min_ar, min(ar, max_ar))
 
         try:
-            if bypass_target_mp:
-                w, h = self._find_bypass_resolution(ar, cfg["block"])
-            else:
-                w, h = self._find_resolution(ar, cfg["target_mp"], cfg["block"])
+            w, h = self._find_resolution(ar, cfg["target_mp"], block)
         except ValueError as e:
             error_msg = f"⚠️ Resolution error: {str(e)}"
             print(error_msg)
@@ -224,28 +223,16 @@ class OptiEmptyLatent:
         actual_mp = (w * h) / 1e6
         actual_ar = round(w / h, 4)
         details = (
-            f"Optimal: {w}x{h} px\n"
+            f"Optimized Resolution: {w}x{h} px\n"
             f"Aspect Ratio: {actual_ar} (requested: {ratio})\n"
             f"Target MP: {cfg['target_mp']}, Actual MP: {actual_mp:.3f}\n"
-            f"Block Size: {cfg['block']}, Channels: {cfg.get('channels', 4)}\n"
+            f"Block Size: {block}, Channels: {cfg.get('channels', 4)}\n"
             f"Model: {cfg.get('desc', latent_alignment)}"
         )
         if clamp_warning:
             details = clamp_warning + "\n" + details
 
         return self._success_result(latent, w, h, details)
-
-    def _find_bypass_resolution(self, ar: float, block: int):
-        """
-        Find a 'standard' or large WxH for the given aspect ratio and block size.
-        For example, round up to the next block multiple near 512, 640, 768, 896, etc.
-        """
-        # Example: pick 640x896 for SD1, or scale up to a max size (e.g., 1024)
-        # You can customize this logic as needed.
-        base = 896  # or another reasonable max height
-        h = self._align(base, block)
-        w = self._align(ar * h, block)
-        return w, h
 
     def _error_result(self, message: str):
         print(f"OptiEmptyLatent Error: {message}")
