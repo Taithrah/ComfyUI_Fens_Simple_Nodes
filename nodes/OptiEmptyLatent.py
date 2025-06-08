@@ -118,6 +118,15 @@ class OptiEmptyLatent:
                         ),
                     },
                 ),
+                "bypass_target_mp": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "label_on": "Yes",
+                        "label_off": "No",
+                        "tooltip": "Bypass target megapixels and use the nearest valid WxH for the aspect ratio.",
+                    },
+                ),
             }
         }
 
@@ -166,6 +175,7 @@ class OptiEmptyLatent:
         latent_alignment: str,
         batch_size: int = 1,
         swap_ratio: bool = False,
+        bypass_target_mp: bool = False,
     ):
         """
         Main node function: calculates optimal latent shape for requested ratio and model.
@@ -200,7 +210,10 @@ class OptiEmptyLatent:
             ar = max(min_ar, min(ar, max_ar))
 
         try:
-            w, h = self._find_resolution(ar, cfg["target_mp"], cfg["block"])
+            if bypass_target_mp:
+                w, h = self._find_bypass_resolution(ar, cfg["block"])
+            else:
+                w, h = self._find_resolution(ar, cfg["target_mp"], cfg["block"])
         except ValueError as e:
             error_msg = f"⚠️ Resolution error: {str(e)}"
             print(error_msg)
@@ -221,6 +234,18 @@ class OptiEmptyLatent:
             details = clamp_warning + "\n" + details
 
         return self._success_result(latent, w, h, details)
+
+    def _find_bypass_resolution(self, ar: float, block: int):
+        """
+        Find a 'standard' or large WxH for the given aspect ratio and block size.
+        For example, round up to the next block multiple near 512, 640, 768, 896, etc.
+        """
+        # Example: pick 640x896 for SD1, or scale up to a max size (e.g., 1024)
+        # You can customize this logic as needed.
+        base = 896  # or another reasonable max height
+        h = self._align(base, block)
+        w = self._align(ar * h, block)
+        return w, h
 
     def _error_result(self, message: str):
         print(f"OptiEmptyLatent Error: {message}")
