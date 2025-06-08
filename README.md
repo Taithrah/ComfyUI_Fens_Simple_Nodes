@@ -8,32 +8,37 @@
 
 ---
 
-The aim of this repository is to offer a suite of custom nodes for ComfyUI that focus on simplicity and utility.
+# Fens Simple Nodes for ComfyUI
 
-## Quickstart
+**A suite of custom nodes designed for simplicity, flexibility, and power.**
 
-1. Look for `Fens-Simple-Nodes` in ComfyUI-Manager. If you are installing manually, clone this repository under `ComfyUI/custom_nodes`. 
-1. Restart ComfyUI.
+## 🚀 Quickstart
 
-# Features
-- **Token Counter**
-  - Simple to use with the ability to change encoders.
-  - On par with webui a1111, forge, etc.
+1. **Install:**  
+   - Find `Fens-Simple-Nodes` in ComfyUI-Manager, **or**  
+   - Clone this repo into `ComfyUI/custom_nodes`.
 
-- **Optimal Empty Latent**
-  - The tool will compute the closest compatible resolution to your target resolution or ratio, ensuring you get a output with minimal deformity (varies by checkpoint).
-  - Specify your target aspect ratio in one of three formats: 
-    - Pixel dimensions: `WxH` (e.g. `1920x1080`)
-    - Ratio: `W:H` (e.g. `16:9`)
-    - Decimal: (e.g. `1.7778`)
+2. **Restart ComfyUI.**
 
-# Examples
+## ✨ Features at a Glance
+- **Token Counter:**  
+  Instantly count tokens in your prompt using your favorite encoder—just like A1111, Forge, and more.
+
+- **Optimal Empty Latent:**  
+  Effortlessly generate the perfect latent size for your model and aspect ratio.  
+  - **Flexible input:** Enter aspect ratio as `16:9`, `1920x1080`, or `1.7778`—whatever feels natural!
+  - **Smart optimization:** Let the node pick the best resolution for your model, or specify your own.
+  - **Portrait/Landscape swap:** Instantly invert width and height.
+  - **Model-aware:** Presets for SD1, SD2, SDXL, and more—no guesswork.
+  - **Batch support:** Generate multiple latents in one go.
+
+## 🖼️ Examples
 
 ### Token Counter
 
 ![TokenCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCount.webp)
 
-### WebUI-Forge Example for comparison
+### WebUI-Forge Comparison
 ![ForgeCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/ForgeCount.webp)
 
 ### Optimal Empty Latent

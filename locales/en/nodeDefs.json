@@ -22,13 +22,17 @@
     "OptiEmptyLatent": {
         "display_name": "Opti Empty Latent",
         "inputs": {
-            "ratio": {
-                "name": "ratio",
-                "tooltip": "Aspect ratio of latent images. Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777)."
+            "dimensions": {
+                "name": "dimensions",
+                "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
             },
-            "swap_ratio": {
-                "name": "swap_ratio",
+            "invert": {
+                "name": "invert",
                 "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16)."
+            },
+            "optimization": {
+                "name": "optimization",
+                "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec"
             },
             "latent_alignment": {
                 "name": "latent_alignment",
