@@ -10,16 +10,6 @@ class OptiEmptyLatent:
     """
     ComfyUI node: Choose optimal WxH for a given aspect ratio & MP target.
     Supports exact resolution input when optimized resolution is disabled.
-
-    Supports SD1, SD2, SDXL, and other SD-like architectures. Model configs include
-    latent block size, target megapixels, channel count, and recommended aspect ratio ranges.
-
-    Model config options:
-    block: Minimum multiple for width/height (latent spatial block size for model, e.g. 8 or 64).
-    target_mp: Target image area in megapixels (width * height / 1e6) for optimal generation.
-    channels: Number of latent channels (usually 4 for Stable Diffusion models).
-    min_ar: Minimum recommended aspect ratio (width/height) for this model.
-    max_ar: Maximum recommended aspect ratio (width/height) for this model.
     """
 
     # Load model config from YAML
@@ -35,17 +25,17 @@ class OptiEmptyLatent:
         """
         return {
             "required": {
-                "ratio": (
+                "dimensions": (
                     "STRING",
                     {
                         "default": "1:1",
                         "tooltip": (
                             "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777)."
-                            "Use WxH when 'Use Optimized Resolution' is FALSE."
+                            "Use WxH when 'Optimization' is FALSE."
                         ),
                     },
                 ),
-                "swap_ratio": (
+                "invert": (
                     "BOOLEAN",
                     {
                         "default": False,
@@ -54,7 +44,7 @@ class OptiEmptyLatent:
                         "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16).",
                     },
                 ),
-                "use_optimized_resolution": (
+                "optimization": (
                     "BOOLEAN",
                     {
                         "default": True,
@@ -62,7 +52,7 @@ class OptiEmptyLatent:
                         "label_off": "FALSE",
                         "tooltip": (
                             "TRUE: Automatically calculates best resolution for your aspect ratio\n"
-                            "FALSE: Use your own exact resolution (WxH format) - will be adjusted to work with the model"
+                            "FALSE: Use your own resolution (WxH format) - will be model spec"
                         ),
                     },
                 ),
@@ -95,7 +85,7 @@ class OptiEmptyLatent:
     FUNCTION = "opti_generate"
 
     @staticmethod
-    def parse_ratio(ratio: str) -> float:
+    def parse_ratio(dimensions: str) -> float:
         """
         Parse an aspect-ratio string into a float (width/height).
 
@@ -107,7 +97,7 @@ class OptiEmptyLatent:
         Raises:
           ValueError if the format is unrecognized or height == 0.
         """
-        s = ratio.strip()
+        s = dimensions.strip()
         if ":" in s:
             parts = s.split(":", 1)
         elif "x" in s.lower():
@@ -116,10 +106,10 @@ class OptiEmptyLatent:
             try:
                 return float(s)
             except ValueError:
-                raise ValueError(f"Invalid ratio format: '{ratio}'")
+                raise ValueError(f"Invalid dimensions format: '{dimensions}'")
         w, h = map(float, parts)
         if h == 0:
-            raise ValueError(f"Height cannot be zero in ratio '{ratio}'")
+            raise ValueError(f"Height cannot be zero in dimensions '{dimensions}'")
         return w / h
 
     def __init__(self):
@@ -130,14 +120,14 @@ class OptiEmptyLatent:
 
     def opti_generate(
         self,
-        ratio: str,
+        dimensions: str,
         latent_alignment: str,
         batch_size: int = 1,
-        swap_ratio: bool = False,
-        use_optimized_resolution: bool = True,
+        invert: bool = False,
+        optimization: bool = True,
     ):
         """
-        Main node function: calculates optimal latent shape for requested ratio and model.
+        Main node function: calculates optimal latent shape for requested dimensions and model.
         Handles aspect ratio clamping, user feedback, and latent generation.
         Returns detailed UI output for user clarity.
         """
@@ -146,13 +136,13 @@ class OptiEmptyLatent:
         block = cfg["block"]
 
         # Handle exact resolution mode (when optimized is disabled)
-        if not use_optimized_resolution:
+        if not optimization:
             try:
                 # Parse resolution from string
-                if "x" in ratio.lower():
-                    parts = ratio.lower().split("x", 1)
-                elif ":" in ratio:
-                    parts = ratio.split(":", 1)
+                if "x" in dimensions.lower():
+                    parts = dimensions.lower().split("x", 1)
+                elif ":" in dimensions:
+                    parts = dimensions.split(":", 1)
                 else:
                     raise ValueError("Must use WxH or W:H format for exact resolution")
 
@@ -162,7 +152,7 @@ class OptiEmptyLatent:
                 w_val = int(parts[0].strip())
                 h_val = int(parts[1].strip())
 
-                if swap_ratio:
+                if invert:
                     w_val, h_val = h_val, w_val
 
                 # Align to model's block size
@@ -187,26 +177,26 @@ class OptiEmptyLatent:
 
         # Optimized resolution mode (default behavior)
         try:
-            ar = self.parse_ratio(ratio)
+            ar = self.parse_ratio(dimensions)
         except ValueError as e:
-            error_msg = f"⚠️ Invalid ratio: {str(e)}"
+            error_msg = f"⚠️ Invalid dimensions: {str(e)}"
             print(error_msg)
             return self._error_result(error_msg)
 
-        if swap_ratio:
+        if invert:
             ar = 1.0 / ar
 
         # Get model config and clamp aspect ratio if necessary
         min_ar, max_ar = cfg.get("min_ar", 0.4), cfg.get("max_ar", 2.5)
 
         # Swap min/max bounds if ratio was swapped
-        if swap_ratio:
+        if invert:
             min_ar, max_ar = 1.0 / max_ar, 1.0 / min_ar
 
         clamp_warning = ""
         if not (min_ar <= ar <= max_ar):
             clamp_warning = (
-                f"⚠️ Ratio {ar:.3f} is outside recommended range for {latent_alignment} "
+                f"⚠️ Dimensions {ar:.3f} are outside recommended range for {latent_alignment} "
                 f"({min_ar:.2f}-{max_ar:.2f}). Clamping for best results."
             )
             ar = max(min_ar, min(ar, max_ar))
@@ -224,7 +214,7 @@ class OptiEmptyLatent:
         actual_ar = round(w / h, 4)
         details = (
             f"Optimized Resolution: {w}x{h} px\n"
-            f"Aspect Ratio: {actual_ar} (requested: {ratio})\n"
+            f"Aspect Ratio: {actual_ar} (requested: {dimensions})\n"
             f"Target MP: {cfg['target_mp']}, Actual MP: {actual_mp:.3f}\n"
             f"Block Size: {block}, Channels: {cfg.get('channels', 4)}\n"
             f"Model: {cfg.get('desc', latent_alignment)}"

@@ -1,3 +1,12 @@
+# Presets
+#
+# Config options:
+# block: Minimum multiple for width/height (latent spatial block size for model, e.g. 8 or 64).
+# target_mp: Target image area in megapixels (width * height / 1e6) for optimal generation.
+# channels: Number of latent channels (usually 4 for Stable Diffusion models).
+# min_ar: Minimum recommended aspect ratio (width/height) for this model.
+# max_ar: Maximum recommended aspect ratio (width/height) for this model.
+
 SD1 (512px):
   block: 8
   target_mp: 0.262144
