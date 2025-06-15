@@ -24,7 +24,7 @@
         "inputs": {
             "dimensions": {
                 "name": "dimensions",
-                "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
+                "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777).\nUse WxH when 'Optimization' is FALSE."
             },
             "invert": {
                 "name": "invert",
@@ -32,11 +32,11 @@
             },
             "optimization": {
                 "name": "optimization",
-                "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec"
+                "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio.\nFALSE: Use your own resolution (WxH format) - will be model spec."
             },
             "latent_alignment": {
                 "name": "latent_alignment",
-                "tooltip": "Optimization preset for model type. See documentation for model-specific constraints."
+                "tooltip": "Optimization preset for model type.\nSee documentation for model-specific constraints."
             },
             "batch_size": {
                 "name": "batch_size",
@@ -57,6 +57,6 @@
                 "tooltip": "Optimal image height (pixels) for the selected aspect ratio and model."
             }
         },
-        "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, and other SD-like architectures."
+        "description": "Choose optimal width and height for a given aspect ratio and megapixel target.\nSupports SD1, SD2, SDXL, and other SD-like architectures."
     }
 }

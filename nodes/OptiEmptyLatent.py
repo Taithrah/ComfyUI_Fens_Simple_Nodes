@@ -30,7 +30,7 @@ class OptiEmptyLatent:
                     {
                         "default": "1:1",
                         "tooltip": (
-                            "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777)."
+                            "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777).\n"
                             "Use WxH when 'Optimization' is FALSE."
                         ),
                     },
@@ -51,8 +51,8 @@ class OptiEmptyLatent:
                         "label_on": "TRUE",
                         "label_off": "FALSE",
                         "tooltip": (
-                            "TRUE: Automatically calculates best resolution for your aspect ratio\n"
-                            "FALSE: Use your own resolution (WxH format) - will be model spec"
+                            "TRUE: Automatically calculates best resolution for your aspect ratio.\n"
+                            "FALSE: Use your own resolution (WxH format) - will be model spec."
                         ),
                     },
                 ),
@@ -60,9 +60,7 @@ class OptiEmptyLatent:
                     list(cls.MODEL_CONFIG.keys()),
                     {
                         "default": "SDXL (1024px)",
-                        "tooltip": (
-                            "Optimization preset for model type. See documentation for model-specific constraints."
-                        ),
+                        "tooltip": "Optimization preset for model type. See documentation for model-specific constraints.",
                     },
                 ),
                 "batch_size": (
@@ -71,9 +69,7 @@ class OptiEmptyLatent:
                         "default": 1,
                         "min": 1,
                         "max": 4096,
-                        "tooltip": (
-                            "Number of latent images in batch (VRAM usage increases with batch size)."
-                        ),
+                        "tooltip": "Number of latent images in batch (VRAM usage increases with batch size).",
                     },
                 ),
             }
@@ -84,18 +80,17 @@ class OptiEmptyLatent:
     CATEGORY = "Fens_Simple_Nodes/Latent"
     FUNCTION = "opti_generate"
 
+    def __init__(self):
+        """
+        Initialize node and set the device for latent generation.
+        """
+        self.device = intermediate_device()
+
     @staticmethod
     def parse_ratio(dimensions: str) -> float:
         """
         Parse an aspect-ratio string into a float (width/height).
-
-        Supported formats:
-          - "W:H"   (e.g. "16:9")
-          - "WxH"   (e.g. "1920x1080" or "1920X1080")
-          - decimal (e.g. "1.777")
-
-        Raises:
-          ValueError if the format is unrecognized or height == 0.
+        Supported formats: "W:H", "WxH", decimal.
         """
         s = dimensions.strip()
         if ":" in s:
@@ -111,12 +106,6 @@ class OptiEmptyLatent:
         if h == 0:
             raise ValueError(f"Height cannot be zero in dimensions '{dimensions}'")
         return w / h
-
-    def __init__(self):
-        """
-        Initialize node and set the device for latent generation.
-        """
-        self.device = intermediate_device()
 
     def opti_generate(
         self,
@@ -138,28 +127,20 @@ class OptiEmptyLatent:
         # Handle exact resolution mode (when optimized is disabled)
         if not optimization:
             try:
-                # Parse resolution from string
                 if "x" in dimensions.lower():
                     parts = dimensions.lower().split("x", 1)
                 elif ":" in dimensions:
                     parts = dimensions.split(":", 1)
                 else:
                     raise ValueError("Must use WxH or W:H format for exact resolution")
-
                 if len(parts) != 2:
                     raise ValueError("Invalid format: expected WxH or W:H")
-
                 w_val = int(parts[0].strip())
                 h_val = int(parts[1].strip())
-
                 if invert:
                     w_val, h_val = h_val, w_val
-
-                # Align to model's block size
                 w = self._align(w_val, block)
                 h = self._align(h_val, block)
-
-                # Create latent with exact resolution
                 latent = self._make_latent(w, h, batch_size, cfg.get("channels", 4))
                 actual_ar = round(w / h, 4)
                 details = (
@@ -169,13 +150,12 @@ class OptiEmptyLatent:
                     f"Model: {cfg.get('desc', latent_alignment)}"
                 )
                 return self._success_result(latent, w, h, details)
-
             except Exception as e:
                 error_msg = f"⚠️ Exact resolution error: {str(e)}"
                 print(error_msg)
                 return self._error_result(error_msg)
 
-        # Optimized resolution mode (default behavior)
+        # Optimized resolution mode
         try:
             ar = self.parse_ratio(dimensions)
         except ValueError as e:
@@ -186,10 +166,7 @@ class OptiEmptyLatent:
         if invert:
             ar = 1.0 / ar
 
-        # Get model config and clamp aspect ratio if necessary
         min_ar, max_ar = cfg.get("min_ar", 0.4), cfg.get("max_ar", 2.5)
-
-        # Swap min/max bounds if ratio was swapped
         if invert:
             min_ar, max_ar = 1.0 / max_ar, 1.0 / min_ar
 
@@ -209,7 +186,6 @@ class OptiEmptyLatent:
             return self._error_result(error_msg)
 
         latent = self._make_latent(w, h, batch_size, cfg.get("channels", 4))
-
         actual_mp = (w * h) / 1e6
         actual_ar = round(w / h, 4)
         details = (
@@ -238,8 +214,7 @@ class OptiEmptyLatent:
         """
         Round to nearest multiple of block size, min block.
         """
-        val = max(block, int(round(value / block)) * block)
-        return val
+        return max(block, int(round(value / block)) * block)
 
     def _find_resolution(self, ar: float, target_mp: float, block: int):
         """
