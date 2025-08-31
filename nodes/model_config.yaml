@@ -31,26 +31,10 @@ SDXL (1024px):
   max_ar: 3.5
   desc: "SDXL, 1024x1024, 4-channel latent, block 64"
 
-SDXL (Div-32):
-  block: 32
-  target_mp: 1.048576
-  channels: 4
-  min_ar: 0.5
-  max_ar: 3.5
-  desc: "SDXL experimental, block 32"
-
-SDXL (Div-16):
-  block: 16
-  target_mp: 1.048576
-  channels: 4
-  min_ar: 0.5
-  max_ar: 3.5
-  desc: "SDXL experimental, block 16"
-
-SDXL (Div-8):
+FLUX (1024px):
   block: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   channels: 4
   min_ar: 0.5
   max_ar: 3.5
-  desc: "SDXL experimental, block 8"
+  desc: "FLUX, 1024x1024, 4-channel latent, block 8"

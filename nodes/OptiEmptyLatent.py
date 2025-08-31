@@ -12,7 +12,6 @@ class OptiEmptyLatent:
     Supports exact resolution input when optimized resolution is disabled.
     """
 
-    # Load model config from YAML
     config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
     with open(config_path, "r") as f:
         MODEL_CONFIG = yaml.safe_load(f)
@@ -23,6 +22,9 @@ class OptiEmptyLatent:
         Returns:
             Dictionary of input fields and tooltips for ComfyUI.
         """
+        preset_names = list(cls.MODEL_CONFIG.keys())
+        alignment_options = preset_names + ["Custom"]
+
         return {
             "required": {
                 "dimensions": (
@@ -57,10 +59,10 @@ class OptiEmptyLatent:
                     },
                 ),
                 "latent_alignment": (
-                    list(cls.MODEL_CONFIG.keys()),
+                    alignment_options,
                     {
                         "default": "SDXL (1024px)",
-                        "tooltip": "Optimization preset for model type. See documentation for model-specific constraints.",
+                        "tooltip": "Optimization preset for model type. Select 'Custom' to set your own block size and target MP.",
                     },
                 ),
                 "batch_size": (
@@ -72,11 +74,40 @@ class OptiEmptyLatent:
                         "tooltip": "Number of latent images in batch (VRAM usage increases with batch size).",
                     },
                 ),
+                # These will only work when "Custom" is selected
+                "block_size": (
+                    "INT",
+                    {
+                        "default": 64,
+                        "min": 8,
+                        "max": 128,
+                        "step": 8,
+                        "tooltip": "Block size (multiple for width/height). Only used when 'Custom' is selected.",
+                        # This field will be hidden unless "Custom" is selected
+                        "display": "none"
+                        if "Custom" not in alignment_options
+                        else "default",
+                    },
+                ),
+                "target_mp": (
+                    "FLOAT",
+                    {
+                        "default": 1.0,
+                        "min": 0.1,
+                        "max": 16.0,
+                        "step": 0.1,
+                        "tooltip": "Target megapixels. Only used when 'Custom' is selected.",
+                        # This field will be hidden unless "Custom" is selected
+                        "display": "none"
+                        if "Custom" not in alignment_options
+                        else "default",
+                    },
+                ),
             }
         }
 
-    RETURN_TYPES = ("LATENT", "INT", "INT")
-    RETURN_NAMES = ("latent", "width", "height")
+    RETURN_TYPES = ("LATENT", "INT", "INT", "INT")
+    RETURN_NAMES = ("latent", "width", "height", "block_size")
     CATEGORY = "Fens_Simple_Nodes/Latent"
     FUNCTION = "opti_generate"
 
@@ -114,14 +145,27 @@ class OptiEmptyLatent:
         batch_size: int = 1,
         invert: bool = False,
         optimization: bool = True,
+        block_size: int = 64,
+        target_mp: float = 1.0,
     ):
         """
         Main node function: calculates optimal latent shape for requested dimensions and model.
         Handles aspect ratio clamping, user feedback, and latent generation.
         Returns detailed UI output for user clarity.
         """
-        # Get model config
-        cfg = self.MODEL_CONFIG[latent_alignment]
+        # Get model config or use custom values
+        if latent_alignment == "Custom":
+            cfg = {
+                "block": block_size,
+                "target_mp": target_mp,
+                "min_ar": 0.5,
+                "max_ar": 3.5,
+                "channels": 4,
+                "desc": f"Custom (Block: {block_size}, Target: {target_mp}MP)",
+            }
+        else:
+            cfg = self.MODEL_CONFIG[latent_alignment]
+
         block = cfg["block"]
 
         # Handle exact resolution mode (when optimized is disabled)
@@ -149,11 +193,11 @@ class OptiEmptyLatent:
                     f"Block Size: {block}, Channels: {cfg.get('channels', 4)}\n"
                     f"Model: {cfg.get('desc', latent_alignment)}"
                 )
-                return self._success_result(latent, w, h, details)
+                return self._success_result(latent, w, h, block, details)
             except Exception as e:
                 error_msg = f"⚠️ Exact resolution error: {str(e)}"
                 print(error_msg)
-                return self._error_result(error_msg)
+                return self._error_result(error_msg, block)
 
         # Optimized resolution mode
         try:
@@ -161,7 +205,7 @@ class OptiEmptyLatent:
         except ValueError as e:
             error_msg = f"⚠️ Invalid dimensions: {str(e)}"
             print(error_msg)
-            return self._error_result(error_msg)
+            return self._error_result(error_msg, block)
 
         if invert:
             ar = 1.0 / ar
@@ -183,7 +227,7 @@ class OptiEmptyLatent:
         except ValueError as e:
             error_msg = f"⚠️ Resolution error: {str(e)}"
             print(error_msg)
-            return self._error_result(error_msg)
+            return self._error_result(error_msg, block)
 
         latent = self._make_latent(w, h, batch_size, cfg.get("channels", 4))
         actual_mp = (w * h) / 1e6
@@ -198,16 +242,21 @@ class OptiEmptyLatent:
         if clamp_warning:
             details = clamp_warning + "\n" + details
 
-        return self._success_result(latent, w, h, details)
+        return self._success_result(latent, w, h, block, details)
 
-    def _error_result(self, message: str):
+    def _error_result(self, message: str, block_size: int = 8):
         print(f"OptiEmptyLatent Error: {message}")
-        return {"ui": {"text": [message]}, "result": ({"samples": None}, 0, 0)}
+        return {
+            "ui": {"text": [message]},
+            "result": ({"samples": None}, 0, 0, block_size),
+        }
 
-    def _success_result(self, latent, width: int, height: int, details: str):
+    def _success_result(
+        self, latent, width: int, height: int, block_size: int, details: str
+    ):
         return {
             "ui": {"text": [details]},
-            "result": (latent, width, height),
+            "result": (latent, width, height, block_size),
         }
 
     def _align(self, value: float, block: int) -> int:
