@@ -74,7 +74,7 @@ class OptiEmptyLatent:
                         "tooltip": "Number of latent images in batch (VRAM usage increases with batch size).",
                     },
                 ),
-                # These will only work when "Custom" is selected
+                # I think there is a limitation with conditional options, so added tooltip clarification
                 "block_size": (
                     "INT",
                     {
@@ -82,11 +82,7 @@ class OptiEmptyLatent:
                         "min": 8,
                         "max": 128,
                         "step": 8,
-                        "tooltip": "Block size (multiple for width/height). Only used when 'Custom' is selected.",
-                        # This field will be hidden unless "Custom" is selected
-                        "display": "none"
-                        if "Custom" not in alignment_options
-                        else "default",
+                        "tooltip": "Block size (multiple for width/height). (Only used when 'Custom' is selected.)",
                     },
                 ),
                 "target_mp": (
@@ -96,11 +92,7 @@ class OptiEmptyLatent:
                         "min": 0.1,
                         "max": 16.0,
                         "step": 0.1,
-                        "tooltip": "Target megapixels. Only used when 'Custom' is selected.",
-                        # This field will be hidden unless "Custom" is selected
-                        "display": "none"
-                        if "Custom" not in alignment_options
-                        else "default",
+                        "tooltip": "Target megapixels. (Only used when 'Custom' is selected.)",
                     },
                 ),
             }
@@ -145,8 +137,8 @@ class OptiEmptyLatent:
         batch_size: int = 1,
         invert: bool = False,
         optimization: bool = True,
-        block_size: int = 64,
-        target_mp: float = 1.0,
+        block_size: int = 64,  # Ignored unless custom is selected
+        target_mp: float = 1.0,  # Ignored unless custom is selected
     ):
         """
         Main node function: calculates optimal latent shape for requested dimensions and model.
