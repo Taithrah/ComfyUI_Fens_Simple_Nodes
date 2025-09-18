@@ -1,5 +1,6 @@
 import math
 import os
+from typing import Any, Dict, Optional
 
 import torch
 import yaml
@@ -257,14 +258,61 @@ class OptiEmptyLatent:
         """
         return max(block, int(round(value / block)) * block)
 
-    def _find_resolution(self, ar: float, target_mp: float, block: int):
+    def _find_resolution(
+        self,
+        ar: float,
+        target_mp: float,
+        block: int,
+        model_cfg: Optional[Dict[str, Any]] = None,
+    ):
         """
-        Find optimal width and height (multiples of block) for given aspect ratio and megapixel target.
+        Model-agnostic resolution finder. Accepts model_cfg (your YAML preset dict)
+        so presets can control search_range and rel_ar_tol if desired.
+
+        Defaults:
+          - search_range = 10 if block >= 32 else 5
+          - rel_ar_tol = 0.001 (0.1% relative AR tolerance)
         """
+        if model_cfg is None:
+            model_cfg = {}
+
         ideal_px = target_mp * 1e6
         raw_h = math.sqrt(ideal_px / ar)
+
+        default_search_range = 10 if block >= 32 else 5
+        search_range = int(model_cfg.get("search_range", default_search_range))
+        rel_ar_tol = float(model_cfg.get("rel_ar_tol", 0.001))
+
+        align = self._align
+
+        # QUICK PASS: prefer aligned solutions that preserve the requested AR within relative tolerance
+        best_exact = None
+        for delta in range(-search_range, search_range + 1):
+            h_try = raw_h + delta * block
+            w_try = ar * h_try
+            w = align(w_try, block)
+            h = align(h_try, block)
+            if w < block or h < block:
+                continue
+            actual_ar = w / h
+            ar_err_rel = abs(actual_ar / ar - 1.0)
+            if ar_err_rel <= rel_ar_tol:
+                mp = (w * h) / 1e6
+                mp_err = abs(mp - target_mp)
+                score = (
+                    mp_err,
+                    ar_err_rel,
+                    -w * h,
+                )  # prefer closer MP, then closer AR, then larger res
+                if best_exact is None or score < best_exact[0]:
+                    best_exact = (score, w, h)
+
+        if best_exact:
+            return best_exact[1], best_exact[2]
+
+        # fallback: combined MP + AR scoring
         best = None
-        for delta in range(-2, 3):
+        for delta in range(-search_range, search_range + 1):
             h_try = raw_h + delta * block
             w_try = ar * h_try
             w = self._align(w_try, block)
@@ -272,11 +320,12 @@ class OptiEmptyLatent:
             if w < block or h < block:
                 continue
             mp = (w * h) / 1e6
-            diff = abs(mp - target_mp)
+            mp_err = abs(mp - target_mp)
             ar_err = abs((w / h) - ar)
-            score = (diff, ar_err, -w * h)
+            score = (mp_err, ar_err, -w * h)
             if best is None or score < best[0]:
                 best = (score, w, h)
+
         if not best:
             raise ValueError("No valid resolution found")
         return best[1], best[2]
