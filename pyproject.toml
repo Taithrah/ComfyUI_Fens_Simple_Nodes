@@ -1,7 +1,7 @@
 [project]
 name = "ComfyUI_Fens_Simple_Nodes"
 description = "Simple nodes for ComfyUI - Token Counter - Optimal Empty Latent"
-version = "1.0.3"
+version = "1.1.0"
 readme = "README.md"
 license = { file = "LICENSE.txt" }
 
