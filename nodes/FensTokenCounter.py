@@ -40,6 +40,10 @@ class FensTokenCounter(io.ComfyNode):
                     display_name="total_tokens",
                     tooltip="The token count using the selected encoders.",
                 ),
+                io.String.Output(
+                    display_name="text",
+                    tooltip="The input prompt (multiline string).",
+                ),
             ],
         )
 
@@ -58,15 +62,15 @@ class FensTokenCounter(io.ComfyNode):
         primary_encoder = kwargs.get("primary_encoder", "")
         text = kwargs.get("text", "")
         if not text or not text.strip():
-            return io.NodeOutput(0)
+            return io.NodeOutput(0, text)
         model_name = ENCODER_MODEL_MAPPING.get(primary_encoder)
         if not model_name:
-            return io.NodeOutput(0)
+            return io.NodeOutput(0, text)
         try:
             if model_name not in cls._tokenizer_cache:
                 cls._tokenizer_cache[model_name] = cls._get_tokenizer(model_name)
             tokenizer = cls._tokenizer_cache[model_name]
             token_count = len(tokenizer.tokenize(text))
-            return io.NodeOutput(token_count)
+            return io.NodeOutput(token_count, text)
         except Exception:
-            return io.NodeOutput(0)
+            return io.NodeOutput(0, text)
