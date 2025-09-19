@@ -41,8 +41,8 @@
 **Token Counter Example:**  
 ![TokenCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCount.webp)
 
+**WebUI-Forge Token count for comparison:**  
+![ForgeCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/ForgeCount.webp)
+
 **Optimal Empty Latent Example:**  
 ![OptimalEmptyLatent](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/OptimalEmptyLatent.webp)
-
-**WebUI-Forge Comparison:**  
-![ForgeCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/ForgeCount.webp)
