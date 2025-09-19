@@ -1,62 +1,78 @@
 {
-    "FensTokenCounter": {
-        "display_name": "Fens Token Counter",
-        "inputs": {
-            "primary_encoder": {
-                "name": "primary_encoder",
-                "tooltip": "Select the primary encoder to use."
-            },
-            "text": {
-                "name": "text",
-                "tooltip": "The prompt to count."
-            }
-        },
-        "outputs": {
-            "total_tokens": {
-                "name": "total_tokens",
-                "tooltip": "The token count using the selected encoders."
-            }
-        },
-        "description": "Get the token count of a prompt using the selected encoders."
+  "FensTokenCounter": {
+    "display_name": "Fens Token Counter",
+    "description": "Get the token count of a prompt using the selected encoder.",
+    "inputs": {
+      "primary_encoder": {
+        "name": "Primary Encoder",
+        "tooltip": "Select the encoder to use for token counting."
+      },
+      "text": {
+        "name": "Prompt Text",
+        "tooltip": "The prompt or text to count tokens for."
+      }
     },
-    "OptiEmptyLatent": {
-        "display_name": "Opti Empty Latent",
-        "inputs": {
-            "dimensions": {
-                "name": "dimensions",
-                "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777).\nUse WxH when 'Optimization' is FALSE."
-            },
-            "invert": {
-                "name": "invert",
-                "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16)."
-            },
-            "optimization": {
-                "name": "optimization",
-                "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio.\nFALSE: Use your own resolution (WxH format) - will be model spec."
-            },
-            "latent_alignment": {
-                "name": "latent_alignment",
-                "tooltip": "Optimization preset for model type.\nSee documentation for model-specific constraints."
-            },
-            "batch_size": {
-                "name": "batch_size",
-                "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
-            }
-        },
-        "outputs": {
-            "latent": {
-                "name": "latent",
-                "tooltip": "Generated latent tensor for the specified configuration."
-            },
-            "width": {
-                "name": "width",
-                "tooltip": "Optimal image width (pixels) for the selected aspect ratio and model."
-            },
-            "height": {
-                "name": "height",
-                "tooltip": "Optimal image height (pixels) for the selected aspect ratio and model."
-            }
-        },
-        "description": "Choose optimal width and height for a given aspect ratio and megapixel target.\nSupports SD1, SD2, SDXL, and other SD-like architectures."
+    "outputs": {
+      "total_tokens": {
+        "name": "Token Count",
+        "tooltip": "The number of tokens in the prompt using the selected encoder."
+      }
     }
+  },
+  "OptiEmptyLatent": {
+    "display_name": "Opti Empty Latent",
+    "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, and other SD-like architectures. Allows exact resolution input when optimization is disabled.",
+    "inputs": {
+      "dimensions": {
+        "name": "Dimensions",
+        "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
+      },
+      "invert": {
+        "name": "Invert",
+        "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
+      },
+      "optimization": {
+        "name": "Optimization",
+        "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec."
+      },
+      "latent_alignment": {
+        "name": "Latent Alignment",
+        "tooltip": "Optimization preset for model type. Select 'Custom' to set your own block size and target MP."
+      },
+      "batch_size": {
+        "name": "Batch Size",
+        "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
+      },
+      "block_size": {
+        "name": "Block Size",
+        "tooltip": "Block size (multiple for width/height). Only used when 'Custom' is selected."
+      },
+      "target_mp": {
+        "name": "Target MP",
+        "tooltip": "Target megapixels. Only used when 'Custom' is selected."
+      }
+    },
+    "outputs": {
+      "latent": {
+        "name": "Latent",
+        "tooltip": "Generated latent tensor for the specified configuration."
+      },
+      "width": {
+        "name": "Width",
+        "tooltip": "Optimal image width (pixels) for the selected aspect ratio and model."
+      },
+      "height": {
+        "name": "Height",
+        "tooltip": "Optimal image height (pixels) for the selected aspect ratio and model."
+      },
+      "block_size": {
+        "name": "Block Size",
+        "tooltip": "Block size used for the calculation."
+      },
+      "details": {
+        "name": "Details",
+        "tooltip": "Details about the calculation and configuration."
+      }
+    }
+  }
 }

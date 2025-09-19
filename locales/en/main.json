@@ -1,5 +1,7 @@
 {
   "nodeCategories": {
-    "Fens_Simple_Nodes": "Fen's Simple Nodes"
+    "Fens_Simple_Nodes": "Fen's Simple Nodes",
+    "Fens_Simple_Nodes/Utility": "Fen's Utility Nodes",
+    "Fens_Simple_Nodes/Latent": "Fen's Latent Nodes"
   }
 }

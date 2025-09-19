@@ -18,7 +18,6 @@ SD1 (512px):
   max_ar: 2.0
   search_range: 5
   rel_ar_tol: 0.001
-  latent_scale: 8
   desc: "SD1.x, 512x512, 4-channel latent, block 8"
 
 SD2 (768px):
@@ -29,7 +28,6 @@ SD2 (768px):
   max_ar: 2.0
   search_range: 5
   rel_ar_tol: 0.001
-  latent_scale: 8
   desc: "SD2.x, 768x768, 4-channel latent, block 8"
 
 SDXL (1024px):
@@ -40,7 +38,6 @@ SDXL (1024px):
   max_ar: 2.0
   search_range: 5
   rel_ar_tol: 0.001
-  latent_scale: 8
   desc: "SDXL, 1024x1024, 4-channel latent, block 8"
 
 FLUX (1024px):
@@ -51,5 +48,4 @@ FLUX (1024px):
   max_ar: 2.0
   search_range: 5
   rel_ar_tol: 0.001
-  latent_scale: 8
   desc: "FLUX, 1024x1024, 4-channel latent, block 8"

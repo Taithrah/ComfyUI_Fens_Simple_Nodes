@@ -1,0 +1,7 @@
+{
+  "nodeCategories": {
+    "Fens_Simple_Nodes": "Fen的简单节点",
+    "Fens_Simple_Nodes/Utility": "Fen的工具节点",
+    "Fens_Simple_Nodes/Latent": "Fen的潜变量节点"
+  }
+}

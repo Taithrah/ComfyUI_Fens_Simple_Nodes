@@ -1,0 +1,78 @@
+{
+  "FensTokenCounter": {
+    "display_name": "Fens令牌计数器",
+    "description": "使用选定的编码器获取提示文本的令牌数量。",
+    "inputs": {
+      "primary_encoder": {
+        "name": "主编码器",
+        "tooltip": "选择用于令牌计数的编码器。"
+      },
+      "text": {
+        "name": "提示文本",
+        "tooltip": "要计数令牌的提示或文本。"
+      }
+    },
+    "outputs": {
+      "total_tokens": {
+        "name": "令牌数量",
+        "tooltip": "使用选定编码器的提示文本令牌数量。"
+      }
+    }
+  },
+  "OptiEmptyLatent": {
+    "display_name": "Opti空潜变量",
+    "description": "根据给定的宽高比和百万像素目标选择最佳宽度和高度。支持SD1、SD2、SDXL及其他SD架构。当禁用优化时允许输入精确分辨率。",
+    "inputs": {
+      "dimensions": {
+        "name": "尺寸",
+        "tooltip": "格式：W:H（如16:9）、WxH（如1280x720）或小数（如1.777）。当“优化”关闭时使用WxH格式。"
+      },
+      "invert": {
+        "name": "反转",
+        "tooltip": "交换宽度和高度（反转宽高比，例如16:9 → 9:16）。"
+      },
+      "optimization": {
+        "name": "优化",
+        "tooltip": "开启：自动计算最佳分辨率。关闭：使用自定义分辨率（WxH格式），按模型规格。"
+      },
+      "latent_alignment": {
+        "name": "潜变量对齐",
+        "tooltip": "模型类型的优化预设。选择“自定义”可设置自己的块大小和目标百万像素。"
+      },
+      "batch_size": {
+        "name": "批量大小",
+        "tooltip": "潜变量图像的批量数量（批量越大，显存占用越高）。"
+      },
+      "block_size": {
+        "name": "块大小",
+        "tooltip": "宽度/高度的倍数块大小，仅在选择“自定义”时使用。"
+      },
+      "target_mp": {
+        "name": "目标百万像素",
+        "tooltip": "目标百万像素，仅在选择“自定义”时使用。"
+      }
+    },
+    "outputs": {
+      "latent": {
+        "name": "潜变量",
+        "tooltip": "为指定配置生成的潜变量张量。"
+      },
+      "width": {
+        "name": "宽度",
+        "tooltip": "为选定宽高比和模型计算的最佳图像宽度（像素）。"
+      },
+      "height": {
+        "name": "高度",
+        "tooltip": "为选定宽高比和模型计算的最佳图像高度（像素）。"
+      },
+      "block_size": {
+        "name": "块大小",
+        "tooltip": "用于计算的块大小。"
+      },
+      "details": {
+        "name": "详情",
+        "tooltip": "关于计算和配置的详细信息。"
+      }
+    }
+  }
+}
