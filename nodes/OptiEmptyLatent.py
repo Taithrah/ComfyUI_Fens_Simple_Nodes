@@ -59,34 +59,28 @@ class OptiEmptyLatent(io.ComfyNode):
                     tooltip="Number of latent images in batch (VRAM usage increases with batch size).",
                 ),
                 io.Int.Input(
-                    "block_size",
+                    "vae_scale_factor",
                     default=8,
-                    min=8,
-                    max=128,
-                    step=8,
-                    tooltip="Block size (multiple for width/height). (Only used when 'Custom' is selected.)",
+                    min=1,
+                    max=64,
+                    tooltip="The VAE's total downsampling factor. (Only used when 'Custom' is selected.)",
                 ),
                 io.Float.Input(
                     "target_mp",
-                    default=1.0,
+                    default=1.048576,
                     min=0.1,
                     max=16.0,
                     step=0.000001,
                     tooltip="Target megapixels. (Only used when 'Custom' is selected.)",
-                ),
-                io.Int.Input(
-                    "latent_scale",
-                    default=8,
-                    min=1,
-                    max=64,
-                    tooltip="VAE downscale factor. (Only used when 'Custom' is selected.)",
                 ),
             ],
             outputs=[
                 io.AnyType.Output(display_name="latent", tooltip="Latent tensor"),
                 io.Int.Output(display_name="width", tooltip="Width"),
                 io.Int.Output(display_name="height", tooltip="Height"),
-                io.Int.Output(display_name="block_size", tooltip="Block size"),
+                io.Int.Output(
+                    display_name="vae_scale_factor", tooltip="VAE Scale Factor"
+                ),
                 io.String.Output(
                     display_name="details", tooltip="Details about the calculation"
                 ),
@@ -180,9 +174,9 @@ class OptiEmptyLatent(io.ComfyNode):
 
     @classmethod
     def _make_latent(
-        cls, w: int, h: int, bs: int, channels: int = 4, latent_scale: int = 8
+        cls, w: int, h: int, bs: int, channels: int = 4, vae_scale_factor: int = 8
     ):
-        shape = (bs, channels, h // latent_scale, w // latent_scale)
+        shape = (bs, channels, h // vae_scale_factor, w // vae_scale_factor)
         return {"samples": torch.zeros(shape, device=cls.device)}
 
     @classmethod
@@ -190,30 +184,30 @@ class OptiEmptyLatent(io.ComfyNode):
         cls, dimensions: str, invert: bool, batch_size: int, cfg: Dict[str, Any]
     ) -> io.NodeOutput:
         """Handles exact resolution mode."""
-        block = cfg["block"]
+        scale_factor = cfg["vae_scale_factor"]
         try:
             w_val, h_val = cls._parse_exact_dimensions(dimensions)
             if invert:
                 w_val, h_val = h_val, w_val
 
-            w = cls._align(w_val, block)
-            h = cls._align(h_val, block)
+            w = cls._align(w_val, scale_factor)
+            h = cls._align(h_val, scale_factor)
 
             latent = cls._make_latent(
-                w, h, batch_size, cfg.get("channels", 4), cfg.get("latent_scale", 8)
+                w, h, batch_size, cfg.get("channels", 4), scale_factor
             )
             actual_ar = round(w / h, 4)
             details = (
                 f"Exact Resolution: {w}x{h} px\n"
                 f"Aspect Ratio: {actual_ar}\n"
-                f"Block Size: {block}, Channels: {cfg.get('channels', 4)}\n"
+                f"VAE Scale Factor: {scale_factor}, Channels: {cfg.get('channels', 4)}\n"
                 f"Model: {cfg.get('desc', 'Custom')}"
             )
-            return io.NodeOutput(latent, w, h, block, details)
+            return io.NodeOutput(latent, w, h, scale_factor, details)
         except Exception as e:
             error_msg = f"⚠️ Exact resolution error: {e}"
             print(error_msg)
-            return io.NodeOutput(None, 0, 0, block, error_msg)
+            return io.NodeOutput(None, 0, 0, scale_factor, error_msg)
 
     @classmethod
     def _execute_optimized(
@@ -225,13 +219,13 @@ class OptiEmptyLatent(io.ComfyNode):
         latent_alignment: str,
     ) -> io.NodeOutput:
         """Handles optimized resolution mode."""
-        block = cfg["block"]
+        scale_factor = cfg["vae_scale_factor"]
         try:
             ar = cls.parse_ratio(dimensions)
         except ValueError as e:
             error_msg = f"⚠️ Invalid dimensions: {e}"
             print(error_msg)
-            return io.NodeOutput(None, 0, 0, block, error_msg)
+            return io.NodeOutput(None, 0, 0, scale_factor, error_msg)
 
         min_ar, max_ar = cfg.get("min_ar", 0.4), cfg.get("max_ar", 2.5)
 
@@ -244,16 +238,18 @@ class OptiEmptyLatent(io.ComfyNode):
             ar = max(min_ar, min(ar, max_ar))
 
         try:
-            w, h = cls._find_resolution(ar, cfg["target_mp"], block, model_cfg=cfg)
+            w, h = cls._find_resolution(
+                ar, cfg["target_mp"], scale_factor, model_cfg=cfg
+            )
             if invert:
                 w, h = h, w
         except ValueError as e:
             error_msg = f"⚠️ Resolution error: {e}"
             print(error_msg)
-            return io.NodeOutput(None, 0, 0, block, error_msg)
+            return io.NodeOutput(None, 0, 0, scale_factor, error_msg)
 
         latent = cls._make_latent(
-            w, h, batch_size, cfg.get("channels", 4), cfg.get("latent_scale", 8)
+            w, h, batch_size, cfg.get("channels", 4), scale_factor
         )
         actual_mp = (w * h) / 1e6
         actual_ar = round(w / h, 4)
@@ -261,13 +257,13 @@ class OptiEmptyLatent(io.ComfyNode):
             f"Optimized Resolution: {w}x{h} px\n"
             f"Aspect Ratio: {actual_ar} (requested: {dimensions})\n"
             f"Target MP: {cfg['target_mp']}, Actual MP: {actual_mp:.3f}\n"
-            f"Block Size: {block}, Channels: {cfg.get('channels', 4)}\n"
+            f"VAE Scale Factor: {scale_factor}, Channels: {cfg.get('channels', 4)}\n"
             f"Model: {cfg.get('desc', latent_alignment)}"
         )
         if clamp_warning:
             details = clamp_warning + "\n" + details
 
-        return io.NodeOutput(latent, w, h, block, details)
+        return io.NodeOutput(latent, w, h, scale_factor, details)
 
     @classmethod
     def execute(cls, **kwargs) -> io.NodeOutput:
@@ -281,11 +277,10 @@ class OptiEmptyLatent(io.ComfyNode):
         # Get model/custom configuration
         if latent_alignment == "Custom":
             cfg = {
-                "block": kwargs["block_size"],
+                "vae_scale_factor": kwargs["vae_scale_factor"],
                 "target_mp": kwargs["target_mp"],
                 "channels": 4,
-                "latent_scale": kwargs["latent_scale"],
-                "desc": f"Custom (Block: {kwargs['block_size']}, Target: {kwargs['target_mp']}MP)",
+                "desc": f"Custom (VAE Scale: {kwargs['vae_scale_factor']}, Target: {kwargs['target_mp']}MP)",
             }
         else:
             cfg = cls.MODEL_CONFIG[latent_alignment]
