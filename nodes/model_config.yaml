@@ -1,6 +1,7 @@
 # Presets
 #
 # Config options:
+# block_size: The alignment constraint for pixel dimensions (e.g., must be a multiple of 8).
 # vae_scale_factor: The VAE's total downsampling factor. Pixel dimensions must be a multiple of this value. For most SD models, this is 8.
 # target_mp: The model's native training resolution in megapixels (e.g., 1024*1024 / 1e6 = 1.048576). The node optimizes resolution to be close to this area.
 # channels: The number of channels in the latent space. This is 4 for nearly all Stable Diffusion models.
@@ -10,6 +11,7 @@
 # rel_ar_tol: An internal parameter for this node's search algorithm; the maximum allowed deviation from the target aspect ratio.
 
 SD1 (512px):
+  block_size: 8
   vae_scale_factor: 8
   target_mp: 0.262144
   channels: 4
@@ -20,6 +22,7 @@ SD1 (512px):
   desc: "SD1.x, 512x512, 4-channel latent, block 8"
 
 SD2 (768px):
+  block_size: 8
   vae_scale_factor: 8
   target_mp: 0.589824
   channels: 4
@@ -30,6 +33,7 @@ SD2 (768px):
   desc: "SD2.x, 768x768, 4-channel latent, block 8"
 
 SDXL (1024px):
+  block_size: 8
   vae_scale_factor: 8
   target_mp: 1.048576
   channels: 4
@@ -40,6 +44,7 @@ SDXL (1024px):
   desc: "SDXL, 1024x1024, 4-channel latent, block 8"
 
 FLUX (1024px):
+  block_size: 8
   vae_scale_factor: 8
   target_mp: 1.048576
   channels: 4
