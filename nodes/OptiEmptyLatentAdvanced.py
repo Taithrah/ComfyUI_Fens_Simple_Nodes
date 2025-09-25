@@ -8,7 +8,7 @@ from comfy.model_management import intermediate_device
 from comfy_api.latest import io
 
 
-class OptiEmptyLatent(io.ComfyNode):
+class OptiEmptyLatentAdvanced(io.ComfyNode):
     """
     Choose optimal WxH for a given aspect ratio & MP target.
     Supports exact resolution input when optimized resolution is disabled.
@@ -22,10 +22,11 @@ class OptiEmptyLatent(io.ComfyNode):
 
     @classmethod
     def define_schema(cls) -> io.Schema:
-        alignment_options = list(cls.MODEL_CONFIG.keys())
+        preset_names = list(cls.MODEL_CONFIG.keys())
+        alignment_options = preset_names + ["Custom"]
         return io.Schema(
-            node_id="OptiEmptyLatent",
-            display_name="Optimal Empty Latent",
+            node_id="OptiEmptyLatentAdvanced",
+            display_name="Optimal Empty Latent (Advanced)",
             category="Fens_Simple_Nodes/Latent",
             description="Choose optimal WxH for a given aspect ratio & MP target. Supports exact resolution input when optimized resolution is disabled.",
             inputs=[
@@ -48,7 +49,7 @@ class OptiEmptyLatent(io.ComfyNode):
                     "latent_alignment",
                     options=alignment_options,
                     default="SDXL (1024px)",
-                    tooltip="Optimization preset for model type.",
+                    tooltip="Optimization preset for model type. Select 'Custom' to set your own block size and target MP.",
                 ),
                 io.Int.Input(
                     "batch_size",
@@ -56,6 +57,30 @@ class OptiEmptyLatent(io.ComfyNode):
                     min=1,
                     max=4096,
                     tooltip="Number of latent images in batch (VRAM usage increases with batch size).",
+                ),
+                io.Int.Input(
+                    "block_size",
+                    default=64,
+                    min=8,
+                    max=64,
+                    step=8,
+                    tooltip="Pixel dimension alignment constraint. (Only used when 'Custom' is selected.)",
+                ),
+                io.Int.Input(
+                    "vae_scale_factor",
+                    default=8,
+                    min=8,
+                    max=64,
+                    step=2,
+                    tooltip="The VAE's total downsampling factor. (Only used when 'Custom' is selected.)",
+                ),
+                io.Float.Input(
+                    "target_mp",
+                    default=1.048576,
+                    min=0.1,
+                    max=16.0,
+                    step=0.000001,
+                    tooltip="Target megapixels. (Only used when 'Custom' is selected.)",
                 ),
             ],
             outputs=[
@@ -257,8 +282,19 @@ class OptiEmptyLatent(io.ComfyNode):
         latent_alignment = kwargs["latent_alignment"]
         batch_size = kwargs["batch_size"]
 
-        # Only use preset configuration
-        cfg = cls.MODEL_CONFIG[latent_alignment]
+        # Get model/custom configuration
+        if latent_alignment == "Custom":
+            cfg = {
+                "block_size": kwargs["block_size"],
+                "vae_scale_factor": kwargs["vae_scale_factor"],
+                "target_mp": kwargs["target_mp"],
+                "channels": 4,
+                "min_ar": kwargs.get("min_ar", 0.5),
+                "max_ar": kwargs.get("max_ar", 3.75),
+                "desc": f"Custom (Block: {kwargs['block_size']}, VAE Scale: {kwargs['vae_scale_factor']}, Target: {kwargs['target_mp']}MP)",
+            }
+        else:
+            cfg = cls.MODEL_CONFIG[latent_alignment]
 
         if not optimization:
             return cls._execute_exact(dimensions, invert, batch_size, cfg)

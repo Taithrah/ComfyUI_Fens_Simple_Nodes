@@ -21,7 +21,7 @@
   },
   "OptiEmptyLatent": {
     "display_name": "Opti Empty Latent",
-    "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, and other SD-like architectures. Allows exact resolution input when optimization is disabled.",
+    "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, and other SD-like architectures. Only preset model configurations are available. Allows exact resolution input when optimization is disabled.",
     "inputs": {
       "dimensions": {
         "name": "Dimensions",
@@ -37,23 +37,11 @@
       },
       "latent_alignment": {
         "name": "Latent Alignment",
-        "tooltip": "Optimization preset for model type. Select 'Custom' to set your own block size and target MP."
+        "tooltip": "Optimization preset for model type. Only preset configurations are available."
       },
       "batch_size": {
         "name": "Batch Size",
         "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
-      },
-      "block_size": {
-        "name": "Block Size",
-        "tooltip": "Pixel dimension alignment constraint. (Only used when 'Custom' is selected.)"
-      },
-      "vae_scale_factor": {
-        "name": "VAE Scale Factor",
-        "tooltip": "The VAE's total downsampling factor. (Only used when 'Custom' is selected.)"
-      },
-      "target_mp": {
-        "name": "Target MP",
-        "tooltip": "Target megapixels. (Only used when 'Custom' is selected.)"
       }
     },
     "outputs": {
@@ -76,6 +64,66 @@
       "details": {
         "name": "Details",
         "tooltip": "Details about the calculation and configuration."
+      }
+    }
+  },
+    "OptiEmptyLatentAdvanced": {
+    "display_name": "Optimal Empty Latent (Advanced)",
+    "description": "Advanced optimal empty latent node. Allows custom block size, channels, target MP, and aspect ratio. Supports both optimized and exact resolution modes.",
+    "inputs": {
+      "dimensions": {
+        "name": "Dimensions",
+        "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
+      },
+      "invert": {
+        "name": "Invert",
+        "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
+      },
+      "optimization": {
+        "name": "Optimization",
+        "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec."
+      },
+      "block_size": {
+        "name": "Block Size",
+        "tooltip": "Minimum multiple for width/height. Used in custom mode."
+      },
+      "vae_scale_factor": {
+        "name": "VAE Scale Factor",
+        "tooltip": "VAE downsampling factor. Usually 8 for SD models."
+      },
+      "channels": {
+        "name": "Channels",
+        "tooltip": "Number of latent channels. Usually 4 for SD models."
+      },
+      "target_mp": {
+        "name": "Target MP",
+        "tooltip": "Target megapixels for optimized resolution."
+      },
+      "batch_size": {
+        "name": "Batch Size",
+        "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
+      }
+    },
+    "outputs": {
+      "latent": {
+        "name": "Latent",
+        "tooltip": "Latent tensor"
+      },
+      "width": {
+        "name": "Width",
+        "tooltip": "Width"
+      },
+      "height": {
+        "name": "Height",
+        "tooltip": "Height"
+      },
+      "block_size": {
+        "name": "Block Size",
+        "tooltip": "Block size used for the calculation."
+      },
+      "details": {
+        "name": "Details",
+        "tooltip": "Details about the calculation"
       }
     }
   }

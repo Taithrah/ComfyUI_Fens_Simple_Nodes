@@ -21,7 +21,7 @@
   },
   "OptiEmptyLatent": {
     "display_name": "Opti空潜变量",
-    "description": "根据给定的宽高比和百万像素目标选择最佳宽度和高度。支持SD1、SD2、SDXL及其他SD架构。当禁用优化时允许输入精确分辨率。",
+    "description": "根据给定的宽高比和百万像素目标选择最佳宽度和高度。支持SD1、SD2、SDXL及其他SD架构。仅支持预设模型配置。当禁用优化时允许输入精确分辨率。",
     "inputs": {
       "dimensions": {
         "name": "尺寸",
@@ -37,19 +37,11 @@
       },
       "latent_alignment": {
         "name": "潜变量对齐",
-        "tooltip": "模型类型的优化预设。选择“自定义”可设置自己的块大小和目标百万像素。"
+        "tooltip": "模型类型的优化预设，仅支持预设配置。"
       },
       "batch_size": {
         "name": "批量大小",
         "tooltip": "潜变量图像的批量数量（批量越大，显存占用越高）。"
-      },
-      "block_size": {
-        "name": "块大小",
-        "tooltip": "宽度/高度的倍数块大小，仅在选择“自定义”时使用。"
-      },
-      "target_mp": {
-        "name": "目标百万像素",
-        "tooltip": "目标百万像素，仅在选择“自定义”时使用。"
       }
     },
     "outputs": {
