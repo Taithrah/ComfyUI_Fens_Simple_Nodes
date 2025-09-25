@@ -1,5 +1,6 @@
 import math
 import os
+from typing import Any, Dict
 
 import torch
 import yaml
@@ -73,6 +74,13 @@ class OptiEmptyLatent(io.ComfyNode):
                     step=0.000001,
                     tooltip="Target megapixels. (Only used when 'Custom' is selected.)",
                 ),
+                io.Int.Input(
+                    "latent_scale",
+                    default=8,
+                    min=1,
+                    max=64,
+                    tooltip="VAE downscale factor. (Only used when 'Custom' is selected.)",
+                ),
             ],
             outputs=[
                 io.AnyType.Output(display_name="latent", tooltip="Latent tensor"),
@@ -103,17 +111,34 @@ class OptiEmptyLatent(io.ComfyNode):
         return w / h
 
     @staticmethod
+    def _parse_exact_dimensions(dimensions: str) -> tuple[int, int]:
+        """Parses 'WxH' or 'W:H' strings into integer tuples."""
+        s = dimensions.strip().lower()
+        if "x" in s:
+            parts = s.split("x", 1)
+        elif ":" in s:
+            parts = s.split(":", 1)
+        else:
+            raise ValueError("Use WxH or W:H format for exact resolution")
+
+        if len(parts) != 2:
+            raise ValueError("Invalid format. Use WxH or W:H")
+
+        w, h = map(int, map(str.strip, parts))
+        return w, h
+
+    @staticmethod
     def _align(value: float, block: int) -> int:
         return max(block, int(round(value / block)) * block)
 
     @classmethod
-    def _find_resolution(cls, ar: float, target_mp: float, block: int, model_cfg=None):
+    def _find_resolution(
+        cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
+    ):
         ideal_px = target_mp * 1e6
         raw_h = math.sqrt(ideal_px / ar)
-        search_range = int(
-            (model_cfg or {}).get("search_range", 10 if block >= 32 else 5)
-        )
-        rel_ar_tol = float((model_cfg or {}).get("rel_ar_tol", 0.001))
+        search_range = int(model_cfg.get("search_range", 10 if block >= 32 else 5))
+        rel_ar_tol = float(model_cfg.get("rel_ar_tol", 0.001))
         align = cls._align
 
         best_exact = None
@@ -154,67 +179,57 @@ class OptiEmptyLatent(io.ComfyNode):
         return best[1], best[2]
 
     @classmethod
-    def _make_latent(cls, w: int, h: int, bs: int, channels: int = 4):
-        shape = (bs, channels, h // 8, w // 8)
+    def _make_latent(
+        cls, w: int, h: int, bs: int, channels: int = 4, latent_scale: int = 8
+    ):
+        shape = (bs, channels, h // latent_scale, w // latent_scale)
         return {"samples": torch.zeros(shape, device=cls.device)}
 
     @classmethod
-    def execute(cls, **kwargs) -> io.NodeOutput:
-        dimensions = kwargs["dimensions"]
-        invert = kwargs["invert"]
-        optimization = kwargs["optimization"]
-        latent_alignment = kwargs["latent_alignment"]
-        batch_size = kwargs["batch_size"]
-        block_size = kwargs["block_size"]
-        target_mp = kwargs["target_mp"]
-
-        if latent_alignment == "Custom":
-            cfg = {
-                "block": block_size,
-                "target_mp": target_mp,
-                "min_ar": 0.5,
-                "max_ar": 3.5,
-                "channels": 4,
-                "desc": f"Custom (Block: {block_size}, Target: {target_mp}MP)",
-            }
-        else:
-            cfg = cls.MODEL_CONFIG[latent_alignment]
-
+    def _execute_exact(
+        cls, dimensions: str, invert: bool, batch_size: int, cfg: Dict[str, Any]
+    ) -> io.NodeOutput:
+        """Handles exact resolution mode."""
         block = cfg["block"]
+        try:
+            w_val, h_val = cls._parse_exact_dimensions(dimensions)
+            if invert:
+                w_val, h_val = h_val, w_val
 
-        # Exact resolution mode
-        if not optimization:
-            try:
-                if "x" in dimensions.lower():
-                    parts = dimensions.lower().split("x", 1)
-                elif ":" in dimensions:
-                    parts = dimensions.split(":", 1)
-                else:
-                    raise ValueError("Must use WxH or W:H format for exact resolution")
-                w_val, h_val = map(int, map(str.strip, parts))
-                if invert:
-                    w_val, h_val = h_val, w_val
-                w = cls._align(w_val, block)
-                h = cls._align(h_val, block)
-                latent = cls._make_latent(w, h, batch_size, cfg.get("channels", 4))
-                actual_ar = round(w / h, 4)
-                details = (
-                    f"Exact Resolution: {w}x{h} px\n"
-                    f"Aspect Ratio: {actual_ar}\n"
-                    f"Block Size: {block}, Channels: {cfg.get('channels', 4)}\n"
-                    f"Model: {cfg.get('desc', latent_alignment)}"
-                )
-                return io.NodeOutput(latent, w, h, block, details)
-            except Exception as e:
-                error_msg = f"⚠️ Exact resolution error: {str(e)}"
-                print(error_msg)
-                return io.NodeOutput(None, 0, 0, block, error_msg)
+            w = cls._align(w_val, block)
+            h = cls._align(h_val, block)
 
-        # Optimized resolution mode
+            latent = cls._make_latent(
+                w, h, batch_size, cfg.get("channels", 4), cfg.get("latent_scale", 8)
+            )
+            actual_ar = round(w / h, 4)
+            details = (
+                f"Exact Resolution: {w}x{h} px\n"
+                f"Aspect Ratio: {actual_ar}\n"
+                f"Block Size: {block}, Channels: {cfg.get('channels', 4)}\n"
+                f"Model: {cfg.get('desc', 'Custom')}"
+            )
+            return io.NodeOutput(latent, w, h, block, details)
+        except Exception as e:
+            error_msg = f"⚠️ Exact resolution error: {e}"
+            print(error_msg)
+            return io.NodeOutput(None, 0, 0, block, error_msg)
+
+    @classmethod
+    def _execute_optimized(
+        cls,
+        dimensions: str,
+        invert: bool,
+        batch_size: int,
+        cfg: Dict[str, Any],
+        latent_alignment: str,
+    ) -> io.NodeOutput:
+        """Handles optimized resolution mode."""
+        block = cfg["block"]
         try:
             ar = cls.parse_ratio(dimensions)
         except ValueError as e:
-            error_msg = f"⚠️ Invalid dimensions: {str(e)}"
+            error_msg = f"⚠️ Invalid dimensions: {e}"
             print(error_msg)
             return io.NodeOutput(None, 0, 0, block, error_msg)
 
@@ -229,15 +244,17 @@ class OptiEmptyLatent(io.ComfyNode):
             ar = max(min_ar, min(ar, max_ar))
 
         try:
-            w, h = cls._find_resolution(ar, cfg["target_mp"], block)
+            w, h = cls._find_resolution(ar, cfg["target_mp"], block, model_cfg=cfg)
             if invert:
                 w, h = h, w
         except ValueError as e:
-            error_msg = f"⚠️ Resolution error: {str(e)}"
+            error_msg = f"⚠️ Resolution error: {e}"
             print(error_msg)
             return io.NodeOutput(None, 0, 0, block, error_msg)
 
-        latent = cls._make_latent(w, h, batch_size, cfg.get("channels", 4))
+        latent = cls._make_latent(
+            w, h, batch_size, cfg.get("channels", 4), cfg.get("latent_scale", 8)
+        )
         actual_mp = (w * h) / 1e6
         actual_ar = round(w / h, 4)
         details = (
@@ -251,3 +268,31 @@ class OptiEmptyLatent(io.ComfyNode):
             details = clamp_warning + "\n" + details
 
         return io.NodeOutput(latent, w, h, block, details)
+
+    @classmethod
+    def execute(cls, **kwargs) -> io.NodeOutput:
+        # Deconstruct kwargs
+        dimensions = kwargs["dimensions"]
+        invert = kwargs["invert"]
+        optimization = kwargs["optimization"]
+        latent_alignment = kwargs["latent_alignment"]
+        batch_size = kwargs["batch_size"]
+
+        # Get model/custom configuration
+        if latent_alignment == "Custom":
+            cfg = {
+                "block": kwargs["block_size"],
+                "target_mp": kwargs["target_mp"],
+                "channels": 4,
+                "latent_scale": kwargs["latent_scale"],
+                "desc": f"Custom (Block: {kwargs['block_size']}, Target: {kwargs['target_mp']}MP)",
+            }
+        else:
+            cfg = cls.MODEL_CONFIG[latent_alignment]
+
+        if not optimization:
+            return cls._execute_exact(dimensions, invert, batch_size, cfg)
+        else:
+            return cls._execute_optimized(
+                dimensions, invert, batch_size, cfg, latent_alignment
+            )

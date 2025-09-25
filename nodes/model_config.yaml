@@ -1,14 +1,14 @@
 # Presets
 #
 # Config options:
-# block: Minimum multiple for width/height (latent spatial block size for model, e.g. 8 or 64).
-# target_mp: Target image area in megapixels (width * height / 1e6) for optimal generation.
-# channels: Number of latent channels (usually 4 for Stable Diffusion models).
-# min_ar: Minimum recommended aspect ratio (width/height) for this model.
-# max_ar: Maximum recommended aspect ratio (width/height) for this model.
-# search_range: how many block-steps to search around ideal height (int)
-# rel_ar_tol: relative aspect-ratio tolerance (fraction, e.g. 0.001 = 0.1%)
-# latent_scale: downscale factor between image px and latent spatial dims (usually 8)
+# block: The VAE's total downsampling factor. Pixel dimensions must be a multiple of this value. For most SD models, this is 8.
+# target_mp: The model's native training resolution in megapixels (e.g., 1024*1024 / 1e6 = 1.048576). The node optimizes resolution to be close to this area.
+# channels: The number of channels in the latent space. This is 4 for nearly all Stable Diffusion models.
+# min_ar: A practical guideline for the minimum aspect ratio to prevent poor composition. Not a hard technical limit.
+# max_ar: A practical guideline for the maximum aspect ratio to prevent poor composition. Not a hard technical limit.
+# search_range: An internal parameter for this node's search algorithm; defines how many block-steps to check around the ideal resolution.
+# rel_ar_tol: An internal parameter for this node's search algorithm; the maximum allowed deviation from the target aspect ratio.
+# latent_scale: The VAE downscale factor used to convert pixel dimensions to latent dimensions (e.g., latent_height = pixel_height / latent_scale). Usually 8.
 
 SD1 (512px):
   block: 8
@@ -18,6 +18,7 @@ SD1 (512px):
   max_ar: 2.0
   search_range: 5
   rel_ar_tol: 0.001
+  latent_scale: 8
   desc: "SD1.x, 512x512, 4-channel latent, block 8"
 
 SD2 (768px):
@@ -28,6 +29,7 @@ SD2 (768px):
   max_ar: 2.0
   search_range: 5
   rel_ar_tol: 0.001
+  latent_scale: 8
   desc: "SD2.x, 768x768, 4-channel latent, block 8"
 
 SDXL (1024px):
@@ -38,6 +40,7 @@ SDXL (1024px):
   max_ar: 2.0
   search_range: 5
   rel_ar_tol: 0.001
+  latent_scale: 8
   desc: "SDXL, 1024x1024, 4-channel latent, block 8"
 
 FLUX (1024px):
@@ -48,4 +51,5 @@ FLUX (1024px):
   max_ar: 2.0
   search_range: 5
   rel_ar_tol: 0.001
+  latent_scale: 8
   desc: "FLUX, 1024x1024, 4-channel latent, block 8"
