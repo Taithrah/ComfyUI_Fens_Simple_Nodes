@@ -1,6 +1,7 @@
+
 # OptiEmptyLatent
 
-The **OptiEmptyLatent** node calculates and generates an empty latent tensor with an optimal resolution for a given aspect ratio and megapixel (MP) target, tailored for different model types in ComfyUI. It supports both automatic (optimized) and manual (exact) resolution modes.
+The **OptiEmptyLatent** node calculates and generates an empty latent tensor with an optimal resolution for a given aspect ratio and megapixel (MP) target, tailored for different model types in ComfyUI. It supports both automatic and manual resolution modes. Only preset model configurations are available.
 
 ## Parameters
 
@@ -20,17 +21,11 @@ The **OptiEmptyLatent** node calculates and generates an empty latent tensor wit
   - `FALSE`: Uses your provided resolution (must be in `WxH` or `W:H` format).
 
 - **Latent Alignment**  
-  Model preset. Selects the optimization preset for the model type (e.g. SDXL, SD1.5, Custom).
+  Model preset. Selects the optimization preset for the model type (e.g. SDXL, SD1.5, SD2, FLUX).
   - Each preset has its own block size, channel count, and recommended aspect ratio range.
 
 - **Batch Size**  
   Number of latent images in the batch (higher values increase VRAM usage).
-
-- **Block Size**  
-  The minimum multiple for width/height. Only used when 'Custom' is selected.
-
-- **Target MP**  
-  Target megapixels. Only used when 'Custom' is selected.
 
 ## Usage
 
