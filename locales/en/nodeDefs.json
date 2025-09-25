@@ -45,11 +45,15 @@
       },
       "block_size": {
         "name": "Block Size",
-        "tooltip": "Block size (multiple for width/height). Only used when 'Custom' is selected."
+        "tooltip": "Pixel dimension alignment constraint. (Only used when 'Custom' is selected.)"
+      },
+      "vae_scale_factor": {
+        "name": "VAE Scale Factor",
+        "tooltip": "The VAE's total downsampling factor. (Only used when 'Custom' is selected.)"
       },
       "target_mp": {
         "name": "Target MP",
-        "tooltip": "Target megapixels. Only used when 'Custom' is selected."
+        "tooltip": "Target megapixels. (Only used when 'Custom' is selected.)"
       }
     },
     "outputs": {

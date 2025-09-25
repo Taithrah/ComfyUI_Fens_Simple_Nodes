@@ -60,7 +60,7 @@ class OptiEmptyLatent(io.ComfyNode):
                 ),
                 io.Int.Input(
                     "block_size",
-                    default=8,
+                    default=64,
                     min=8,
                     max=64,
                     step=8,
@@ -88,7 +88,8 @@ class OptiEmptyLatent(io.ComfyNode):
                 io.Int.Output(display_name="width", tooltip="Width"),
                 io.Int.Output(display_name="height", tooltip="Height"),
                 io.Int.Output(
-                    display_name="vae_scale_factor", tooltip="VAE Scale Factor"
+                    display_name="block_size",
+                    tooltip="Block size used for the calculation.",
                 ),
                 io.String.Output(
                     display_name="details", tooltip="Details about the calculation"
@@ -213,11 +214,11 @@ class OptiEmptyLatent(io.ComfyNode):
                 f"Block Size: {block}, VAE Scale: {vae_scale}\n"
                 f"Model: {cfg.get('desc', 'Custom')}"
             )
-            return io.NodeOutput(latent, w, h, vae_scale, details)
+            return io.NodeOutput(latent, w, h, block, details)
         except Exception as e:
             error_msg = f"⚠️ Exact resolution error: {e}"
             print(error_msg)
-            return io.NodeOutput(None, 0, 0, vae_scale, error_msg)
+            return io.NodeOutput(None, 0, 0, block, error_msg)
 
     @classmethod
     def _execute_optimized(
@@ -236,9 +237,9 @@ class OptiEmptyLatent(io.ComfyNode):
         except ValueError as e:
             error_msg = f"⚠️ Invalid dimensions: {e}"
             print(error_msg)
-            return io.NodeOutput(None, 0, 0, vae_scale, error_msg)
+            return io.NodeOutput(None, 0, 0, block, error_msg)
 
-        min_ar, max_ar = cfg.get("min_ar", 0.4), cfg.get("max_ar", 2.5)
+        min_ar, max_ar = cfg["min_ar"], cfg["max_ar"]
 
         clamp_warning = ""
         if not (min_ar <= ar <= max_ar):
@@ -255,7 +256,7 @@ class OptiEmptyLatent(io.ComfyNode):
         except ValueError as e:
             error_msg = f"⚠️ Resolution error: {e}"
             print(error_msg)
-            return io.NodeOutput(None, 0, 0, vae_scale, error_msg)
+            return io.NodeOutput(None, 0, 0, block, error_msg)
 
         latent = cls._make_latent(w, h, batch_size, cfg.get("channels", 4), vae_scale)
         actual_mp = (w * h) / 1e6
@@ -270,7 +271,7 @@ class OptiEmptyLatent(io.ComfyNode):
         if clamp_warning:
             details = clamp_warning + "\n" + details
 
-        return io.NodeOutput(latent, w, h, vae_scale, details)
+        return io.NodeOutput(latent, w, h, block, details)
 
     @classmethod
     def execute(cls, **kwargs) -> io.NodeOutput:
@@ -288,6 +289,8 @@ class OptiEmptyLatent(io.ComfyNode):
                 "vae_scale_factor": kwargs["vae_scale_factor"],
                 "target_mp": kwargs["target_mp"],
                 "channels": 4,
+                "min_ar": kwargs.get("min_ar", 0.5),
+                "max_ar": kwargs.get("max_ar", 3.75),
                 "desc": f"Custom (Block: {kwargs['block_size']}, VAE Scale: {kwargs['vae_scale_factor']}, Target: {kwargs['target_mp']}MP)",
             }
         else:
