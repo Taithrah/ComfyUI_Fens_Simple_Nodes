@@ -7,10 +7,6 @@ from .encoder_mapping import ENCODER_MODEL_MAPPING
 
 
 class FensTokenCounter(io.ComfyNode):
-    """
-    Node to count tokens in a prompt using a selected encoder.
-    """
-
     @classmethod
     def define_schema(cls) -> io.Schema:
         encoder_keys = list(ENCODER_MODEL_MAPPING.keys())
@@ -33,7 +29,7 @@ class FensTokenCounter(io.ComfyNode):
                     "text",
                     multiline=True,
                     dynamic_prompts=True,
-                    tooltip="The prompt to count.",
+                    tooltip="The text to be encoded or counted.",
                     optional=True,
                 ),
             ],
@@ -56,26 +52,24 @@ class FensTokenCounter(io.ComfyNode):
     def _get_tokenizer(cls, model_name: str):
         if "t5" in model_name.lower():
             return T5Tokenizer.from_pretrained(model_name, legacy=True)
-        else:
-            return CLIPTokenizer.from_pretrained(model_name)
+        return CLIPTokenizer.from_pretrained(model_name)
 
     @classmethod
-    def execute(cls, **kwargs) -> io.NodeOutput:
-        primary_encoder = kwargs.get("primary_encoder")
-        text = kwargs.get("text", "")
-
+    def execute(cls, primary_encoder, text) -> io.NodeOutput:
         if not primary_encoder:
             logging.warning("FensTokenCounter: No primary_encoder provided.")
             return io.NodeOutput(0, text)
 
         if not text or not text.strip():
             return io.NodeOutput(0, text)
+
         model_name = ENCODER_MODEL_MAPPING.get(primary_encoder)
         if not model_name:
             logging.warning(
                 f"FensTokenCounter: Encoder '{primary_encoder}' not found in mapping."
             )
             return io.NodeOutput(0, text)
+
         try:
             if model_name not in cls._tokenizer_cache:
                 cls._tokenizer_cache[model_name] = cls._get_tokenizer(model_name)

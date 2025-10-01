@@ -274,24 +274,26 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
         return io.NodeOutput(latent, w, h, block, details)
 
     @classmethod
-    def execute(cls, **kwargs) -> io.NodeOutput:
-        # Deconstruct kwargs
-        dimensions = kwargs["dimensions"]
-        invert = kwargs["invert"]
-        optimization = kwargs["optimization"]
-        latent_alignment = kwargs["latent_alignment"]
-        batch_size = kwargs["batch_size"]
-
-        # Get model/custom configuration
+    def execute(
+        cls,
+        dimensions,
+        invert,
+        optimization,
+        latent_alignment,
+        batch_size,
+        block_size,
+        vae_scale_factor,
+        target_mp,
+    ) -> io.NodeOutput:
         if latent_alignment == "Custom":
             cfg = {
-                "block_size": kwargs["block_size"],
-                "vae_scale_factor": kwargs["vae_scale_factor"],
-                "target_mp": kwargs["target_mp"],
+                "block_size": block_size,
+                "vae_scale_factor": vae_scale_factor,
+                "target_mp": target_mp,
                 "channels": 4,
-                "min_ar": kwargs.get("min_ar", 0.5),
-                "max_ar": kwargs.get("max_ar", 3.75),
-                "desc": f"Custom (Block: {kwargs['block_size']}, VAE Scale: {kwargs['vae_scale_factor']}, Target: {kwargs['target_mp']}MP)",
+                "min_ar": 0.5,
+                "max_ar": 3.75,
+                "desc": f"Custom (Block: {block_size}, VAE Scale: {vae_scale_factor}, Target: {target_mp}MP)",
             }
         else:
             cfg = cls.MODEL_CONFIG[latent_alignment]

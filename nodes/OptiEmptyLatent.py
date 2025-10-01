@@ -249,15 +249,9 @@ class OptiEmptyLatent(io.ComfyNode):
         return io.NodeOutput(latent, w, h, block, details)
 
     @classmethod
-    def execute(cls, **kwargs) -> io.NodeOutput:
-        # Deconstruct kwargs
-        dimensions = kwargs["dimensions"]
-        invert = kwargs["invert"]
-        optimization = kwargs["optimization"]
-        latent_alignment = kwargs["latent_alignment"]
-        batch_size = kwargs["batch_size"]
-
-        # Only use preset configuration
+    def execute(
+        cls, dimensions, invert, optimization, latent_alignment, batch_size
+    ) -> io.NodeOutput:
         cfg = cls.MODEL_CONFIG[latent_alignment]
 
         if not optimization:
