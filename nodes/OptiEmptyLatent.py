@@ -113,49 +113,53 @@ class OptiEmptyLatent(io.ComfyNode):
     @classmethod
     def _find_resolution(
         cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
-    ):
+    ) -> tuple[int, int]:
         ideal_px = target_mp * 1e6
         raw_h = math.sqrt(ideal_px / ar)
-        search_range = int(model_cfg.get("search_range", 10 if block >= 32 else 5))
-        rel_ar_tol = float(model_cfg.get("rel_ar_tol", 0.001))
+        search_range = int(model_cfg.get("search_range", 5 if block >= 32 else 10))
         align = cls._align
 
-        best_exact = None
-        for delta in range(-search_range, search_range + 1):
-            h_try = raw_h + delta * block
-            w_try = ar * h_try
-            w = align(w_try, block)
-            h = align(h_try, block)
-            if w < block or h < block:
-                continue
-            actual_ar = w / h
-            ar_err_rel = abs(actual_ar / ar - 1.0)
-            if ar_err_rel <= rel_ar_tol:
-                mp = (w * h) / 1e6
-                mp_err = abs(mp - target_mp)
-                score = (mp_err, ar_err_rel, -w * h)
-                if best_exact is None or score < best_exact[0]:
-                    best_exact = (score, w, h)
-        if best_exact:
-            return best_exact[1], best_exact[2]
+        min_ar = float(model_cfg.get("min_ar", 0.5))
+        max_ar = float(model_cfg.get("max_ar", 3.75))
 
-        best = None
+        best_score = float("inf")
+        best_w = best_h = 0
+
         for delta in range(-search_range, search_range + 1):
             h_try = raw_h + delta * block
             w_try = ar * h_try
             w = align(w_try, block)
             h = align(h_try, block)
+
             if w < block or h < block:
                 continue
+
+            candidate_ar = w / h
+            if candidate_ar < min_ar or candidate_ar > max_ar:
+                continue
+
             mp = (w * h) / 1e6
-            mp_err = abs(mp - target_mp)
-            ar_err = abs((w / h) - ar)
-            score = (mp_err, ar_err, -w * h)
-            if best is None or score < best[0]:
-                best = (score, w, h)
-        if not best:
-            raise ValueError("No valid resolution found")
-        return best[1], best[2]
+            mp_err_rel = abs(mp - target_mp) / target_mp
+            ar_err_rel = abs(candidate_ar - ar) / ar
+
+            mp_weight = 10.0
+            ar_weight = 1.0
+            score = (mp_weight * mp_err_rel) + (ar_weight * ar_err_rel)
+
+            if abs(score - best_score) < 1e-9:
+                if (w * h) > (best_w * best_h):
+                    best_w, best_h = w, h
+            elif score < best_score:
+                best_score = score
+                best_w, best_h = w, h
+
+        if best_w == 0 or best_h == 0:
+            raise ValueError(
+                f"No valid resolution found for AR~{ar:.3f}, target {target_mp}MP, "
+                f"block {block}. Try increasing search_range."
+            )
+
+        return best_w, best_h
 
     @classmethod
     def _make_latent(
