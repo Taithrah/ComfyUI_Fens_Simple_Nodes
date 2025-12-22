@@ -201,8 +201,16 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
             if invert:
                 w_val, h_val = h_val, w_val
 
-            w = cls._align(w_val, block)
-            h = cls._align(h_val, block)
+            if w_val % block != 0 or h_val % block != 0:
+                error_msg = (
+                    f"⚠️ Resolution {w_val}x{h_val} is not compatible with the selected model.\n"
+                    f"Dimensions must be multiples of the block size ({block}).\n"
+                    f"Suggested compatible resolution: {cls._align(w_val, block)}x{cls._align(h_val, block)}"
+                )
+                print(error_msg)
+                return io.NodeOutput(None, 0, 0, block, error_msg)
+
+            w, h = w_val, h_val
 
             latent = cls._make_latent(
                 w, h, batch_size, cfg.get("channels", 4), vae_scale

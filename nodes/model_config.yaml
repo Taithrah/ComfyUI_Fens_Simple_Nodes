@@ -11,7 +11,7 @@
 # rel_ar_tol: An internal parameter for this node's search algorithm; the maximum allowed deviation from the target aspect ratio.
 
 SD1 (512px):
-  block_size: 64
+  block_size: 8
   vae_scale_factor: 8
   target_mp: 0.262144
   channels: 4
@@ -19,10 +19,10 @@ SD1 (512px):
   max_ar: 3.75
   search_range: 5
   rel_ar_tol: 0.001
-  desc: "SD1.x, 512x512, 4-channel latent, block 64"
+  desc: "SD1.x, 512x512, 4-channel latent, block 8"
 
 SD2 (768px):
-  block_size: 64
+  block_size: 8
   vae_scale_factor: 8
   target_mp: 0.589824
   channels: 4
@@ -30,10 +30,10 @@ SD2 (768px):
   max_ar: 3.75
   search_range: 5
   rel_ar_tol: 0.001
-  desc: "SD2.x, 768x768, 4-channel latent, block 64"
+  desc: "SD2.x, 768x768, 4-channel latent, block 8"
 
 SDXL (1024px):
-  block_size: 64
+  block_size: 8
   vae_scale_factor: 8
   target_mp: 1.048576
   channels: 4
@@ -41,15 +41,15 @@ SDXL (1024px):
   max_ar: 3.75
   search_range: 5
   rel_ar_tol: 0.001
-  desc: "SDXL, 1024x1024, 4-channel latent, block 64"
+  desc: "SDXL, 1024x1024, 4-channel latent, block 8"
 
 FLUX (1024px):
-  block_size: 64
+  block_size: 32
   vae_scale_factor: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   channels: 4
   min_ar: 0.5
   max_ar: 3.75
   search_range: 5
   rel_ar_tol: 0.001
-  desc: "FLUX, 1024x1024, 4-channel latent, block 64"
+  desc: "FLUX, 1024x1024, 4-channel latent, block 32"
