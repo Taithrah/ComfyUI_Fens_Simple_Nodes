@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from comfy_api.latest import io
 from transformers import CLIPTokenizer, T5Tokenizer
@@ -55,20 +56,20 @@ class FensTokenCounter(io.ComfyNode):
         return CLIPTokenizer.from_pretrained(model_name)
 
     @classmethod
-    def execute(cls, primary_encoder, text) -> io.NodeOutput:
+    def execute(cls, primary_encoder: str, text: Optional[str] = None) -> io.NodeOutput:
         if not primary_encoder:
             logging.warning("FensTokenCounter: No primary_encoder provided.")
-            return io.NodeOutput(0, text)
+            return io.NodeOutput(0, text or "")
 
         if not text or not text.strip():
-            return io.NodeOutput(0, text)
+            return io.NodeOutput(0, text or "")
 
         model_name = ENCODER_MODEL_MAPPING.get(primary_encoder)
         if not model_name:
             logging.warning(
                 f"FensTokenCounter: Encoder '{primary_encoder}' not found in mapping."
             )
-            return io.NodeOutput(0, text)
+            return io.NodeOutput(0, text or "")
 
         try:
             if model_name not in cls._tokenizer_cache:
@@ -80,4 +81,4 @@ class FensTokenCounter(io.ComfyNode):
             logging.error(
                 f"FensTokenCounter: Failed to tokenize text with {primary_encoder}. Error: {e}"
             )
-            return io.NodeOutput(0, text)
+            return io.NodeOutput(0, text or "")
