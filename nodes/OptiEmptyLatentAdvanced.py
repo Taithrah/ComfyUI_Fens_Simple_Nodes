@@ -91,7 +91,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.AnyType.Output(display_name="latent", tooltip="Latent tensor"),
+                io.Latent.Output(display_name="latent", tooltip="Latent tensor"),
                 io.Int.Output(display_name="width", tooltip="Width"),
                 io.Int.Output(display_name="height", tooltip="Height"),
                 io.Int.Output(

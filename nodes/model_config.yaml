@@ -43,13 +43,35 @@ SDXL (1024px):
   rel_ar_tol: 0.01
   desc: "SDXL, 1024x1024, 4-channel latent, block 8"
 
-FLUX (1024px):
-  block_size: 32
+SD3 (1024px):
+  block_size: 16
   vae_scale_factor: 8
-  target_mp: 1.0
-  channels: 4
+  target_mp: 1.048576
+  channels: 16
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
   rel_ar_tol: 0.001
-  desc: "FLUX, 1024x1024, 4-channel latent, block 32"
+  desc: "SD3, 1024x1024, 16-channel latent, block 16"
+
+FLUX.1 (1024px):
+  block_size: 32
+  vae_scale_factor: 8
+  target_mp: 1.048576
+  channels: 16
+  min_ar: 0.5
+  max_ar: 3.75
+  search_range: 10
+  rel_ar_tol: 0.001
+  desc: "FLUX.1, 1024x1024, 16-channel latent, block 32"
+
+FLUX.2 (1024px):
+  block_size: 16
+  vae_scale_factor: 16
+  target_mp: 1.048576
+  channels: 128
+  min_ar: 0.5
+  max_ar: 3.75
+  search_range: 10
+  rel_ar_tol: 0.001
+  desc: "FLUX.2, 1024x1024, 128-channel latent, block 16, VAE scale 16"
