@@ -9,11 +9,6 @@ from comfy_api.latest import io
 
 
 class OptiEmptyLatentAdvanced(io.ComfyNode):
-    """
-    Choose optimal WxH for a given aspect ratio & MP target.
-    Supports exact resolution input when optimized resolution is disabled.
-    """
-
     config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
     with open(config_path, "r") as f:
         MODEL_CONFIG = yaml.safe_load(f)
@@ -43,13 +38,13 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 io.Boolean.Input(
                     "optimization",
                     default=True,
-                    tooltip="TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec.",
+                    tooltip="TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format).",
                 ),
                 io.Combo.Input(
                     "latent_alignment",
                     options=alignment_options,
                     default="SDXL (1024px)",
-                    tooltip="Optimization preset for model type. Select 'Custom' to set your own block size and target MP.",
+                    tooltip="Optimization preset for model type. Select 'Custom' to set your own parameters.",
                 ),
                 io.Int.Input(
                     "batch_size",
@@ -60,15 +55,15 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
                 io.Int.Input(
                     "block_size",
-                    default=64,
+                    default=cls.MODEL_CONFIG["Custom"]["block_size"],
                     min=8,
                     max=64,
                     step=8,
                     tooltip="Pixel dimension alignment constraint. (Only used when 'Custom' is selected.)",
                 ),
                 io.Int.Input(
-                    "vae_scale_factor",
-                    default=8,
+                    "spacial_downscale_ratio",
+                    default=cls.MODEL_CONFIG["Custom"]["spacial_downscale_ratio"],
                     min=8,
                     max=64,
                     step=2,
@@ -76,7 +71,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
                 io.Float.Input(
                     "target_mp",
-                    default=1.048576,
+                    default=cls.MODEL_CONFIG["Custom"]["target_mp"],
                     min=0.1,
                     max=16.0,
                     step=0.000001,
@@ -84,7 +79,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
                 io.Int.Input(
                     "search_range",
-                    default=10,
+                    default=cls.MODEL_CONFIG["Custom"]["search_range"],
                     min=1,
                     max=100,
                     tooltip="Search range for optimization. Higher values search more possibilities. (Only used when 'Custom' is selected.)",
@@ -123,7 +118,6 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
 
     @staticmethod
     def _parse_exact_dimensions(dimensions: str) -> tuple[int, int]:
-        """Parses 'WxH' or 'W:H' strings into integer tuples."""
         s = dimensions.strip().lower()
         if "x" in s:
             parts = s.split("x", 1)
@@ -198,103 +192,27 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
         return best_w, best_h
 
     @classmethod
-    def _make_latent(
-        cls, w: int, h: int, bs: int, channels: int = 4, vae_scale_factor: int = 8
-    ):
-        shape = (bs, channels, h // vae_scale_factor, w // vae_scale_factor)
+    def _make_latent(cls, w: int, h: int, bs: int, spacial_downscale_ratio: int):
+        shape = (
+            bs,
+            4,  # Standard latent channels for compatibility
+            h // spacial_downscale_ratio,
+            w // spacial_downscale_ratio,
+        )
         return {"samples": torch.zeros(shape, device=cls.device)}
 
     @classmethod
-    def _execute_exact(
-        cls, dimensions: str, invert: bool, batch_size: int, cfg: Dict[str, Any]
-    ) -> io.NodeOutput:
-        """Handles exact resolution mode."""
-        block = cfg["block_size"]
-        vae_scale = cfg["vae_scale_factor"]
-        try:
-            w_val, h_val = cls._parse_exact_dimensions(dimensions)
-            if invert:
-                w_val, h_val = h_val, w_val
-
-            if w_val % block != 0 or h_val % block != 0:
-                error_msg = (
-                    f"⚠️ Resolution {w_val}x{h_val} is not compatible with the selected model.\n"
-                    f"Dimensions must be multiples of the block size ({block}).\n"
-                    f"Suggested compatible resolution: {cls._align(w_val, block)}x{cls._align(h_val, block)}"
-                )
-                print(error_msg)
-                return io.NodeOutput(None, 0, 0, block, error_msg)
-
-            w, h = w_val, h_val
-
-            latent = cls._make_latent(
-                w, h, batch_size, cfg.get("channels", 4), vae_scale
-            )
-            actual_ar = round(w / h, 4)
-            details = (
-                f"Exact Resolution: {w}x{h} px\n"
-                f"Aspect Ratio: {actual_ar}\n"
-                f"Block Size: {block}, VAE Scale: {vae_scale}\n"
-                f"Model: {cfg.get('desc', 'Custom')}"
-            )
-            return io.NodeOutput(latent, w, h, block, details)
-        except Exception as e:
-            error_msg = f"⚠️ Exact resolution error: {e}"
-            print(error_msg)
-            return io.NodeOutput(None, 0, 0, block, error_msg)
-
-    @classmethod
-    def _execute_optimized(
-        cls,
-        dimensions: str,
-        invert: bool,
-        batch_size: int,
-        cfg: Dict[str, Any],
-        latent_alignment: str,
-    ) -> io.NodeOutput:
-        """Handles optimized resolution mode."""
-        block = cfg["block_size"]
-        vae_scale = cfg["vae_scale_factor"]
-        try:
-            ar = cls.parse_ratio(dimensions)
-        except ValueError as e:
-            error_msg = f"⚠️ Invalid dimensions: {e}"
-            print(error_msg)
-            return io.NodeOutput(None, 0, 0, block, error_msg)
-
-        min_ar, max_ar = cfg["min_ar"], cfg["max_ar"]
-
-        clamp_warning = ""
-        if not (min_ar <= ar <= max_ar):
-            clamp_warning = (
-                f"⚠️ Dimensions {ar:.3f} are outside recommended range for {latent_alignment} "
-                f"({min_ar:.2f}-{max_ar:.2f}). Clamping for best results."
-            )
-            ar = max(min_ar, min(ar, max_ar))
-
-        try:
-            w, h = cls._find_resolution(ar, cfg["target_mp"], block, model_cfg=cfg)
-            if invert:
-                w, h = h, w
-        except ValueError as e:
-            error_msg = f"⚠️ Resolution error: {e}"
-            print(error_msg)
-            return io.NodeOutput(None, 0, 0, block, error_msg)
-
-        latent = cls._make_latent(w, h, batch_size, cfg.get("channels", 4), vae_scale)
-        actual_mp = (w * h) / 1e6
-        actual_ar = round(w / h, 4)
+    def _generate_details(cls, w, h, ar, cfg, latent_alignment, clamp_warning=""):
         details = (
-            f"Optimized Resolution: {w}x{h} px\n"
-            f"Aspect Ratio: {actual_ar} (requested: {dimensions})\n"
-            f"Target MP: {cfg['target_mp']}, Actual MP: {actual_mp:.3f}\n"
-            f"Block Size: {block}, VAE Scale: {vae_scale}\n"
+            f"Resolution: {w}x{h} px\n"
+            f"Aspect Ratio: {ar:.4f}\n"
+            f"Target MP: {cfg['target_mp']}, Actual MP: {(w * h) / 1e6:.3f}\n"
+            f"Block Size: {cfg['block_size']}, VAE Scale: {cfg['spacial_downscale_ratio']}\n"
             f"Model: {cfg.get('desc', latent_alignment)}"
         )
         if clamp_warning:
             details = clamp_warning + "\n" + details
-
-        return io.NodeOutput(latent, w, h, block, details)
+        return details
 
     @classmethod
     def execute(
@@ -305,28 +223,75 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
         latent_alignment,
         batch_size,
         block_size,
-        vae_scale_factor,
+        spacial_downscale_ratio,
         target_mp,
         search_range,
     ) -> io.NodeOutput:
         if latent_alignment == "Custom":
-            cfg = {
-                "block_size": block_size,
-                "vae_scale_factor": vae_scale_factor,
-                "target_mp": target_mp,
-                "channels": 4,
-                "min_ar": 0.5,
-                "max_ar": 3.75,
-                "search_range": search_range,
-                "rel_ar_tol": 0.001,
-                "desc": f"Custom (Block: {block_size}, VAE Scale: {vae_scale_factor}, Target: {target_mp}MP)",
-            }
+            cfg = cls.MODEL_CONFIG.get("Custom", {}).copy()
+            cfg.update(
+                {
+                    "block_size": block_size,
+                    "spacial_downscale_ratio": spacial_downscale_ratio,
+                    "target_mp": target_mp,
+                    "search_range": search_range,
+                }
+            )
         else:
             cfg = cls.MODEL_CONFIG[latent_alignment]
 
         if not optimization:
-            return cls._execute_exact(dimensions, invert, batch_size, cfg)
+            try:
+                w, h = cls._parse_exact_dimensions(dimensions)
+                if invert:
+                    w, h = h, w
+                w, h = (
+                    cls._align(w, cfg["block_size"]),
+                    cls._align(h, cfg["block_size"]),
+                )
+
+                # Check if dimensions are compatible with block size
+                if w % cfg["block_size"] != 0 or h % cfg["block_size"] != 0:
+                    error_msg = (
+                        f"⚠️ Resolution {w}x{h} is not compatible with the selected model.\n"
+                        f"Dimensions must be multiples of the block size ({cfg['block_size']}).\n"
+                        f"Suggested compatible resolution: {cls._align(w, cfg['block_size'])}x{cls._align(h, cfg['block_size'])}"
+                    )
+                    return io.NodeOutput(None, 0, 0, cfg["block_size"], error_msg)
+
+                latent = cls._make_latent(
+                    w, h, batch_size, cfg["spacial_downscale_ratio"]
+                )
+                details = cls._generate_details(w, h, w / h, cfg, "Custom")
+                return io.NodeOutput(latent, w, h, cfg["block_size"], details)
+            except Exception as e:
+                return io.NodeOutput(None, 0, 0, cfg["block_size"], f"Error: {e}")
         else:
-            return cls._execute_optimized(
-                dimensions, invert, batch_size, cfg, latent_alignment
-            )
+            try:
+                ar = cls.parse_ratio(dimensions)
+
+                # Check aspect ratio bounds
+                min_ar = float(cfg.get("min_ar", 0.5))
+                max_ar = float(cfg.get("max_ar", 3.75))
+                clamp_warning = ""
+                if not (min_ar <= ar <= max_ar):
+                    clamp_warning = (
+                        f"⚠️ Dimensions {ar:.3f} are outside recommended range for {latent_alignment} "
+                        f"({min_ar:.2f}-{max_ar:.2f}). Clamping for best results."
+                    )
+                    ar = max(min_ar, min(ar, max_ar))
+
+                w, h = cls._find_resolution(
+                    ar, cfg["target_mp"], cfg["block_size"], cfg
+                )
+                if invert:
+                    w, h = h, w
+                latent = cls._make_latent(
+                    w, h, batch_size, cfg["spacial_downscale_ratio"]
+                )
+                details = cls._generate_details(
+                    w, h, w / h, cfg, latent_alignment, clamp_warning
+                )
+                return io.NodeOutput(latent, w, h, cfg["block_size"], details)
+            except Exception as e:
+                return io.NodeOutput(None, 0, 0, cfg["block_size"], f"Error: {e}")
