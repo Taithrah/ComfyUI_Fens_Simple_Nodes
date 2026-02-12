@@ -50,10 +50,17 @@ class FensTokenCounter(io.ComfyNode):
     _tokenizer_cache = {}
 
     @classmethod
-    def _get_tokenizer(cls, model_name: str):
-        if "t5" in model_name.lower():
-            return T5Tokenizer.from_pretrained(model_name, legacy=True)
-        return CLIPTokenizer.from_pretrained(model_name)
+    def _get_tokenizer(cls, model_name: str) -> CLIPTokenizer | T5Tokenizer:
+        """Load tokenizer with automatic model downloading from HuggingFace."""
+        try:
+            if "t5" in model_name.lower():
+                return T5Tokenizer.from_pretrained(model_name, legacy=True)
+            return CLIPTokenizer.from_pretrained(model_name)
+        except Exception as e:
+            logging.error(
+                f"FensTokenCounter: Failed to load tokenizer {model_name}. Error: {e}"
+            )
+            raise
 
     @classmethod
     def execute(cls, primary_encoder: str, text: Optional[str] = None) -> io.NodeOutput:
@@ -73,7 +80,9 @@ class FensTokenCounter(io.ComfyNode):
 
         try:
             if model_name not in cls._tokenizer_cache:
+                logging.info(f"FensTokenCounter: Loading tokenizer for {model_name}...")
                 cls._tokenizer_cache[model_name] = cls._get_tokenizer(model_name)
+
             tokenizer = cls._tokenizer_cache[model_name]
             token_count = len(tokenizer.tokenize(text))
             return io.NodeOutput(token_count, text)
