@@ -20,7 +20,7 @@
     }
   },
   "OptiEmptyLatent": {
-    "display_name": "Opti Empty Latent",
+    "display_name": "Optimal Empty Latent",
     "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, and other SD-like architectures. Only preset model configurations are available. Allows exact resolution input when optimization is disabled.",
     "inputs": {
       "dimensions": {

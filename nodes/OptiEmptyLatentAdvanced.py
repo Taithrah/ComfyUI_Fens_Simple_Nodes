@@ -9,6 +9,8 @@ from comfy_api.latest import io
 
 
 class OptiEmptyLatentAdvanced(io.ComfyNode):
+    LATENT_CHANNELS: int = 4
+
     config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
     with open(config_path, "r") as f:
         MODEL_CONFIG = yaml.safe_load(f)
@@ -192,10 +194,12 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
         return best_w, best_h
 
     @classmethod
-    def _make_latent(cls, w: int, h: int, bs: int, spacial_downscale_ratio: int):
+    def _make_latent(
+        cls, w: int, h: int, bs: int, spacial_downscale_ratio: int
+    ) -> dict[str, torch.Tensor]:
         shape = (
             bs,
-            4,  # Standard latent channels for compatibility
+            cls.LATENT_CHANNELS,
             h // spacial_downscale_ratio,
             w // spacial_downscale_ratio,
         )
@@ -217,15 +221,15 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
     @classmethod
     def execute(
         cls,
-        dimensions,
-        invert,
-        optimization,
-        latent_alignment,
-        batch_size,
-        block_size,
-        spacial_downscale_ratio,
-        target_mp,
-        search_range,
+        dimensions: str,
+        invert: bool,
+        optimization: bool,
+        latent_alignment: str,
+        batch_size: int,
+        block_size: int,
+        spacial_downscale_ratio: int,
+        target_mp: float,
+        search_range: int,
     ) -> io.NodeOutput:
         if latent_alignment == "Custom":
             cfg = cls.MODEL_CONFIG.get("Custom", {}).copy()
@@ -245,19 +249,8 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 w, h = cls._parse_exact_dimensions(dimensions)
                 if invert:
                     w, h = h, w
-                w, h = (
-                    cls._align(w, cfg["block_size"]),
-                    cls._align(h, cfg["block_size"]),
-                )
-
-                # Check if dimensions are compatible with block size
-                if w % cfg["block_size"] != 0 or h % cfg["block_size"] != 0:
-                    error_msg = (
-                        f"⚠️ Resolution {w}x{h} is not compatible with the selected model.\n"
-                        f"Dimensions must be multiples of the block size ({cfg['block_size']}).\n"
-                        f"Suggested compatible resolution: {cls._align(w, cfg['block_size'])}x{cls._align(h, cfg['block_size'])}"
-                    )
-                    return io.NodeOutput(None, 0, 0, cfg["block_size"], error_msg)
+                w = cls._align(w, cfg["block_size"])
+                h = cls._align(h, cfg["block_size"])
 
                 latent = cls._make_latent(
                     w, h, batch_size, cfg["spacial_downscale_ratio"]
