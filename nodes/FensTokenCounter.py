@@ -18,6 +18,7 @@ class FensTokenCounter(io.ComfyNode):
             node_id="FensTokenCounter",
             display_name="Fens Token Counter",
             category="Fens_Simple_Nodes/Utility",
+            search_aliases=["token", "tokens", "token count", "count tokens"],
             description="Get the token count of a prompt using the selected encoders.",
             inputs=[
                 io.Combo.Input(

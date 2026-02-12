@@ -24,6 +24,14 @@ class OptiEmptyLatent(io.ComfyNode):
             node_id="OptiEmptyLatent",
             display_name="Optimal Empty Latent",
             category="Fens_Simple_Nodes/Latent",
+            search_aliases=[
+                "empty",
+                "empty latent",
+                "new latent",
+                "create latent",
+                "blank latent",
+                "blank",
+            ],
             description="Choose optimal WxH for a given aspect ratio & MP target. Supports exact resolution input when optimized resolution is disabled.",
             inputs=[
                 io.String.Input(
