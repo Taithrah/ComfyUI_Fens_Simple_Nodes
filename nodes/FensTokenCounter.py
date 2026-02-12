@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from comfy_api.latest import io
 from transformers import CLIPTokenizer, T5Tokenizer
@@ -48,10 +48,10 @@ class FensTokenCounter(io.ComfyNode):
         )
 
     # Class-level tokenizer cache
-    _tokenizer_cache = {}
+    _tokenizer_cache: dict[str, Union[CLIPTokenizer, T5Tokenizer]] = {}
 
     @classmethod
-    def _get_tokenizer(cls, model_name: str) -> CLIPTokenizer | T5Tokenizer:
+    def _get_tokenizer(cls, model_name: str) -> Union[CLIPTokenizer, T5Tokenizer]:
         """Load tokenizer with automatic model downloading from HuggingFace."""
         try:
             if "t5" in model_name.lower():
