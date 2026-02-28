@@ -16,6 +16,10 @@
       "total_tokens": {
         "name": "Token Count",
         "tooltip": "The number of tokens in the prompt using the selected encoder."
+      },
+      "text": {
+        "name": "Prompt Text",
+        "tooltip": "The input prompt (multiline string)."
       }
     }
   },
@@ -67,7 +71,7 @@
       }
     }
   },
-    "OptiEmptyLatentAdvanced": {
+  "OptiEmptyLatentAdvanced": {
     "display_name": "Optimal Empty Latent (Advanced)",
     "description": "Advanced optimal empty latent node. Allows custom block size, channels, target MP, and aspect ratio. Supports both optimized and exact resolution modes.",
     "inputs": {
@@ -85,19 +89,19 @@
       },
       "block_size": {
         "name": "Block Size",
-        "tooltip": "Minimum multiple for width/height. Used in custom mode."
+        "tooltip": "Pixel dimension alignment constraint. (Only used when 'Custom' is selected.)"
       },
-      "vae_scale_factor": {
+      "spacial_downscale_ratio": {
         "name": "VAE Scale Factor",
-        "tooltip": "VAE downsampling factor. Usually 8 for SD models."
-      },
-      "channels": {
-        "name": "Channels",
-        "tooltip": "Number of latent channels. Usually 4 for SD models."
+        "tooltip": "The VAE's total downsampling factor. (Only used when 'Custom' is selected.)"
       },
       "target_mp": {
         "name": "Target MP",
-        "tooltip": "Target megapixels for optimized resolution."
+        "tooltip": "Target megapixels. (Only used when 'Custom' is selected.)"
+      },
+      "search_range": {
+        "name": "Search Range",
+        "tooltip": "Search range for optimization. Higher values search more possibilities. (Only used when 'Custom' is selected.)"
       },
       "batch_size": {
         "name": "Batch Size",

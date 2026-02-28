@@ -14,3 +14,22 @@ homepage = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
 PublisherId = "taithrah"
 DisplayName = "Fens-Simple-Nodes"
 Icon = ""
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+fix = true
+exclude = ["*.ipynb", "**/generated/*.pyi"]
+
+[tool.ruff.lint]
+select = ["N805", "S307", "S102", "E", "T", "W", "F"]
+ignore = ["E501", "E722", "E731", "E712", "E402", "E741"]
+
+[tool.pylint.'MAIN']
+master.py-version = "3.10"
+disable = "C0114,C0115,C0116"
+max-line-length = 88
+reports.output-format = "colorized"
+extension-pkg-whitelist = ""
+similarities.ignore-imports = "yes"
+ignore-patterns = "test_.*"

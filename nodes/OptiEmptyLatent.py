@@ -2,19 +2,18 @@ import math
 import os
 from typing import Any, Dict
 
-import torch
 import yaml
 from comfy.model_management import intermediate_device
 from comfy_api.latest import io
 
+from .latent_utils import align, make_latent, parse_exact_dimensions, parse_ratio
+
 
 class OptiEmptyLatent(io.ComfyNode):
     LATENT_CHANNELS: int = 4
-
     config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         MODEL_CONFIG = yaml.safe_load(f)
-
     device = intermediate_device()
 
     @classmethod
@@ -77,43 +76,6 @@ class OptiEmptyLatent(io.ComfyNode):
             ],
         )
 
-    @staticmethod
-    def parse_ratio(dimensions: str) -> float:
-        s = dimensions.strip()
-        if ":" in s:
-            parts = s.split(":", 1)
-        elif "x" in s.lower():
-            parts = s.lower().split("x", 1)
-        else:
-            try:
-                return float(s)
-            except ValueError:
-                raise ValueError(f"Invalid dimensions format: '{dimensions}'")
-        w, h = map(float, parts)
-        if h == 0:
-            raise ValueError(f"Height cannot be zero in dimensions '{dimensions}'")
-        return w / h
-
-    @staticmethod
-    def _parse_exact_dimensions(dimensions: str) -> tuple[int, int]:
-        s = dimensions.strip().lower()
-        if "x" in s:
-            parts = s.split("x", 1)
-        elif ":" in s:
-            parts = s.split(":", 1)
-        else:
-            raise ValueError("Use WxH or W:H format for exact resolution")
-
-        if len(parts) != 2:
-            raise ValueError("Invalid format. Use WxH or W:H")
-
-        w, h = map(int, map(str.strip, parts))
-        return w, h
-
-    @staticmethod
-    def _align(value: float, block: int) -> int:
-        return max(block, int(round(value / block)) * block)
-
     @classmethod
     def _find_resolution(
         cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
@@ -121,61 +83,38 @@ class OptiEmptyLatent(io.ComfyNode):
         ideal_px = target_mp * 1024 * 1024
         raw_h = math.sqrt(ideal_px / ar)
         search_range = int(model_cfg.get("search_range", 10))
-        align = cls._align
-
         min_ar = float(model_cfg.get("min_ar", 0.5))
         max_ar = float(model_cfg.get("max_ar", 3.75))
-
         best_score = float("inf")
         best_w = best_h = 0
-
         for delta in range(-search_range, search_range + 1):
             h_try = raw_h + delta * block
             w_try = ar * h_try
             w = align(w_try, block)
             h = align(h_try, block)
-
             if w < block or h < block:
                 continue
-
             candidate_ar = w / h
             if candidate_ar < min_ar or candidate_ar > max_ar:
                 continue
-
             mp = (w * h) / (1024 * 1024)
             mp_err_rel = abs(mp - target_mp) / target_mp
             ar_err_rel = abs(candidate_ar - ar) / ar
-
             mp_weight = 10.0
             ar_weight = 1.0
             score = (mp_weight * mp_err_rel) + (ar_weight * ar_err_rel)
-
             if abs(score - best_score) < 1e-9:
                 if (w * h) > (best_w * best_h):
                     best_w, best_h = w, h
             elif score < best_score:
                 best_score = score
                 best_w, best_h = w, h
-
         if best_w == 0 or best_h == 0:
             raise ValueError(
                 f"No valid resolution found for AR~{ar:.3f}, target {target_mp}MP, "
                 f"block {block}. Try increasing search_range."
             )
-
         return best_w, best_h
-
-    @classmethod
-    def _make_latent(
-        cls, w: int, h: int, bs: int, spacial_downscale_ratio: int
-    ) -> dict[str, torch.Tensor]:
-        shape = (
-            bs,
-            cls.LATENT_CHANNELS,
-            h // spacial_downscale_ratio,
-            w // spacial_downscale_ratio,
-        )
-        return {"samples": torch.zeros(shape, device=cls.device)}
 
     @classmethod
     def execute(
@@ -187,20 +126,19 @@ class OptiEmptyLatent(io.ComfyNode):
         batch_size: int,
     ) -> io.NodeOutput:
         cfg = cls.MODEL_CONFIG[latent_alignment]
-
         if not optimization:
             try:
-                w, h = cls._parse_exact_dimensions(dimensions)
+                w, h = parse_exact_dimensions(dimensions)
                 if invert:
                     w, h = h, w
-                w = cls._align(w, cfg["block_size"])
-                h = cls._align(h, cfg["block_size"])
-
-                latent = cls._make_latent(
+                w = align(w, cfg["block_size"])
+                h = align(h, cfg["block_size"])
+                latent = make_latent(
                     w,
                     h,
                     batch_size,
                     cfg["spacial_downscale_ratio"],
+                    cls.device,
                 )
                 details = (
                     f"Exact Resolution: {w}x{h} px\n"
@@ -213,9 +151,7 @@ class OptiEmptyLatent(io.ComfyNode):
                 return io.NodeOutput(None, 0, 0, cfg["block_size"], f"Error: {e}")
         else:
             try:
-                ar = cls.parse_ratio(dimensions)
-
-                # Check aspect ratio bounds
+                ar = parse_ratio(dimensions)
                 min_ar = float(cfg.get("min_ar", 0.5))
                 max_ar = float(cfg.get("max_ar", 3.75))
                 clamp_warning = ""
@@ -225,17 +161,17 @@ class OptiEmptyLatent(io.ComfyNode):
                         f"({min_ar:.2f}-{max_ar:.2f}). Clamping for best results.\n"
                     )
                     ar = max(min_ar, min(ar, max_ar))
-
                 w, h = cls._find_resolution(
                     ar, cfg["target_mp"], cfg["block_size"], cfg
                 )
                 if invert:
                     w, h = h, w
-                latent = cls._make_latent(
+                latent = make_latent(
                     w,
                     h,
                     batch_size,
                     cfg["spacial_downscale_ratio"],
+                    cls.device,
                 )
                 details = (
                     f"{clamp_warning}Optimized Resolution: {w}x{h} px\n"

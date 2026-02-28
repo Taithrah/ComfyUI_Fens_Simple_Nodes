@@ -16,6 +16,10 @@
       "total_tokens": {
         "name": "令牌数量",
         "tooltip": "使用选定编码器的提示文本令牌数量。"
+      },
+      "text": {
+        "name": "提示文本",
+        "tooltip": "输入的提示文本（多行字符串）。"
       }
     }
   },
@@ -64,6 +68,66 @@
       "details": {
         "name": "详情",
         "tooltip": "关于计算和配置的详细信息。"
+      }
+    }
+  },
+  "OptiEmptyLatentAdvanced": {
+    "display_name": "高级Opti空潜变量",
+    "description": "高级空潜变量节点。允许自定义块大小、VAE缩放因子、目标百万像素和宽高比。支持优化和精确分辨率模式。",
+    "inputs": {
+      "dimensions": {
+        "name": "尺寸",
+        "tooltip": "格式：W:H（如16:9）、WxH（如1280x720）或小数（如1.777）。当“优化”关闭时使用WxH格式。"
+      },
+      "invert": {
+        "name": "反转",
+        "tooltip": "交换宽度和高度（反转宽高比，例如16:9 → 9:16）。"
+      },
+      "optimization": {
+        "name": "优化",
+        "tooltip": "开启：自动计算最佳分辨率。关闭：使用自定义分辨率（WxH格式），按模型规格。"
+      },
+      "block_size": {
+        "name": "块大小",
+        "tooltip": "像素对齐约束（仅在自定义模式下使用）。"
+      },
+      "spacial_downscale_ratio": {
+        "name": "VAE缩放因子",
+        "tooltip": "VAE总下采样因子（仅在自定义模式下使用）。"
+      },
+      "target_mp": {
+        "name": "目标百万像素",
+        "tooltip": "目标百万像素（仅在自定义模式下使用）。"
+      },
+      "search_range": {
+        "name": "搜索范围",
+        "tooltip": "优化搜索范围。值越大搜索可能性越多（仅在自定义模式下使用）。"
+      },
+      "batch_size": {
+        "name": "批量大小",
+        "tooltip": "潜变量图像的批量数量（批量越大，显存占用越高）。"
+      }
+    },
+    "outputs": {
+      "latent": {
+        "name": "潜变量",
+        "tooltip": "潜变量张量"
+      },
+      "width": {
+        "name": "宽度",
+        "tooltip": "宽度"
+      },
+      "height": {
+        "name": "高度",
+        "tooltip": "高度"
+      },
+      "block_size": {
+        "name": "块大小",
+        "tooltip": "用于计算的块大小。"
+      },
+      "details": {
+        "name": "详情",
+        "tooltip": "关于计算的详细信息"
       }
     }
   }
