@@ -118,7 +118,7 @@ class OptiEmptyLatent(io.ComfyNode):
     def _find_resolution(
         cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
     ) -> tuple[int, int]:
-        ideal_px = target_mp * 1e6
+        ideal_px = target_mp * 1024 * 1024
         raw_h = math.sqrt(ideal_px / ar)
         search_range = int(model_cfg.get("search_range", 10))
         align = cls._align
@@ -142,7 +142,7 @@ class OptiEmptyLatent(io.ComfyNode):
             if candidate_ar < min_ar or candidate_ar > max_ar:
                 continue
 
-            mp = (w * h) / 1e6
+            mp = (w * h) / (1024 * 1024)
             mp_err_rel = abs(mp - target_mp) / target_mp
             ar_err_rel = abs(candidate_ar - ar) / ar
 

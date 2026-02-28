@@ -12,7 +12,7 @@
 Custom:
   block_size: 8
   spacial_downscale_ratio: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
@@ -42,7 +42,7 @@ SD2 (768px):
 SDXL (1024px):
   block_size: 8
   spacial_downscale_ratio: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
@@ -50,31 +50,31 @@ SDXL (1024px):
   desc: "SDXL, 1024x1024, block 8"
 
 SD3 (1024px):
-  block_size: 16
+  block_size: 8
   spacial_downscale_ratio: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
   rel_ar_tol: 0.001
-  desc: "SD3, 1024x1024, block 16"
+  desc: "SD3, 1024x1024, block 8"
 
 FLUX.1 (1024px):
   block_size: 32
   spacial_downscale_ratio: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
   rel_ar_tol: 0.001
   desc: "FLUX.1, 1024x1024, block 32"
 
-FLUX.2 (1024px):
+FLUX.2 (1536px):
   block_size: 16
   spacial_downscale_ratio: 16
-  target_mp: 1.048576
+  target_mp: 2.25
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
   rel_ar_tol: 0.001
-  desc: "FLUX.2, 1024x1024, block 16, VAE scale 16"
+  desc: "FLUX.2, 1536x1536, block 16, VAE scale 16"
