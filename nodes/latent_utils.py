@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Any, Tuple
 
 import torch
 
@@ -42,11 +42,16 @@ def align(value: float, block: int) -> int:
 
 def make_latent(
     w: int, h: int, bs: int, spacial_downscale_ratio: int, device: torch.device
-) -> dict[str, torch.Tensor]:
+) -> dict[str, Any]:
     shape = (
         bs,
         4,
         h // spacial_downscale_ratio,
         w // spacial_downscale_ratio,
     )
-    return {"samples": torch.zeros(shape, device=device)}
+    # Include the downscale ratio so Comfy's sampler can adjust empty latents
+    # for models with different latent formats.
+    return {
+        "samples": torch.zeros(shape, device=device),
+        "downscale_ratio_spacial": spacial_downscale_ratio,
+    }

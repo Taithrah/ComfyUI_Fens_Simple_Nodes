@@ -25,7 +25,7 @@
 ## 🌟 What’s Inside?
 
 - **Token Counter:**  
-  Instantly count how many tokens are in your prompt, using a encoder.  
+  Instantly count typed prompt tokens and see your current context window tier using your connected ComfyUI IO.CLIP text encoder.  
   Great for prompt engineering, troubleshooting, or just curiosity!
 
 - **Optimal Empty Latent:**  

@@ -1,21 +1,37 @@
 {
   "FensTokenCounter": {
     "display_name": "Fens令牌计数器",
-    "description": "使用选定的编码器获取提示文本的令牌数量。",
+    "description": "统计输入提示词令牌数量，并显示当前分词上下文窗口用量。",
     "inputs": {
-      "primary_encoder": {
-        "name": "主编码器",
-        "tooltip": "选择用于令牌计数的编码器。"
+      "clip": {
+        "name": "Clip",
+        "tooltip": "来自当前工作流的 ComfyUI CLIP 对象（文本编码器栈）。"
       },
       "text": {
         "name": "提示文本",
         "tooltip": "要计数令牌的提示或文本。"
+      },
+      "count_strategy": {
+        "name": "计数策略",
+        "tooltip": "在分词器分支（如 l/g/t5xxl）之间聚合计数：max_stream 取最大分支计数，sum_streams 为所有分支求和。"
       }
     },
     "outputs": {
       "total_tokens": {
         "name": "令牌数量",
-        "tooltip": "使用选定编码器的提示文本令牌数量。"
+        "tooltip": "用户输入的实际令牌数量（不含填充及多数特殊令牌）。"
+      },
+      "context_limit_tokens": {
+        "name": "上下文上限",
+        "tooltip": "当前上下文窗口层级可用的总令牌数（例如 77、154、231）。"
+      },
+      "chunk_count": {
+        "name": "分块数量",
+        "tooltip": "该提示词占用的分词窗口/分块数量。"
+      },
+      "details": {
+        "name": "详情",
+        "tooltip": "关于输入令牌与上下文占用的可读摘要。"
       },
       "text": {
         "name": "提示文本",
@@ -31,17 +47,17 @@
         "name": "尺寸",
         "tooltip": "格式：W:H（如16:9）、WxH（如1280x720）或小数（如1.777）。当“优化”关闭时使用WxH格式。"
       },
-      "invert": {
-        "name": "反转",
-        "tooltip": "交换宽度和高度（反转宽高比，例如16:9 → 9:16）。"
+      "latent_alignment": {
+        "name": "潜变量对齐",
+        "tooltip": "模型类型的优化预设，仅支持预设配置。"
       },
       "optimization": {
         "name": "优化",
         "tooltip": "开启：自动计算最佳分辨率。关闭：使用自定义分辨率（WxH格式），按模型规格。"
       },
-      "latent_alignment": {
-        "name": "潜变量对齐",
-        "tooltip": "模型类型的优化预设，仅支持预设配置。"
+      "invert": {
+        "name": "反转",
+        "tooltip": "交换宽度和高度（反转宽高比，例如16:9 → 9:16）。"
       },
       "batch_size": {
         "name": "批量大小",
@@ -79,13 +95,21 @@
         "name": "尺寸",
         "tooltip": "格式：W:H（如16:9）、WxH（如1280x720）或小数（如1.777）。当“优化”关闭时使用WxH格式。"
       },
-      "invert": {
-        "name": "反转",
-        "tooltip": "交换宽度和高度（反转宽高比，例如16:9 → 9:16）。"
+      "latent_alignment": {
+        "name": "潜变量对齐",
+        "tooltip": "模型类型的优化预设。选择“Custom”可使用自定义参数。"
       },
       "optimization": {
         "name": "优化",
         "tooltip": "开启：自动计算最佳分辨率。关闭：使用自定义分辨率（WxH格式），按模型规格。"
+      },
+      "invert": {
+        "name": "反转",
+        "tooltip": "交换宽度和高度（反转宽高比，例如16:9 → 9:16）。"
+      },
+      "batch_size": {
+        "name": "批量大小",
+        "tooltip": "潜变量图像的批量数量（批量越大，显存占用越高）。"
       },
       "block_size": {
         "name": "块大小",
@@ -102,10 +126,6 @@
       "search_range": {
         "name": "搜索范围",
         "tooltip": "优化搜索范围。值越大搜索可能性越多（仅在自定义模式下使用）。"
-      },
-      "batch_size": {
-        "name": "批量大小",
-        "tooltip": "潜变量图像的批量数量（批量越大，显存占用越高）。"
       }
     },
     "outputs": {

@@ -14,11 +14,11 @@ class OptiEmptyLatent(io.ComfyNode):
     config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
     with open(config_path, "r", encoding="utf-8") as f:
         MODEL_CONFIG = yaml.safe_load(f)
-    device = intermediate_device()
 
     @classmethod
     def define_schema(cls) -> io.Schema:
-        alignment_options = list(cls.MODEL_CONFIG.keys())
+        # Keep Custom preset for the advanced node only.
+        alignment_options = [k for k in cls.MODEL_CONFIG.keys() if k != "Custom"]
         return io.Schema(
             node_id="OptiEmptyLatent",
             display_name="Optimal Empty Latent",
@@ -38,21 +38,21 @@ class OptiEmptyLatent(io.ComfyNode):
                     default="1:1",
                     tooltip="Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE.",
                 ),
-                io.Boolean.Input(
-                    "invert",
-                    default=False,
-                    tooltip="Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16).",
+                io.Combo.Input(
+                    "latent_alignment",
+                    options=alignment_options,
+                    default="SDXL (1024px)",
+                    tooltip="Optimization preset for model type.",
                 ),
                 io.Boolean.Input(
                     "optimization",
                     default=True,
                     tooltip="TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format).",
                 ),
-                io.Combo.Input(
-                    "latent_alignment",
-                    options=alignment_options,
-                    default="SDXL (1024px)",
-                    tooltip="Optimization preset for model type.",
+                io.Boolean.Input(
+                    "invert",
+                    default=False,
+                    tooltip="Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16).",
                 ),
                 io.Int.Input(
                     "batch_size",
@@ -80,7 +80,7 @@ class OptiEmptyLatent(io.ComfyNode):
     def _find_resolution(
         cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
     ) -> tuple[int, int]:
-        ideal_px = target_mp * 1024 * 1024
+        ideal_px = target_mp * 1_000_000
         raw_h = math.sqrt(ideal_px / ar)
         search_range = int(model_cfg.get("search_range", 10))
         min_ar = float(model_cfg.get("min_ar", 0.5))
@@ -97,7 +97,7 @@ class OptiEmptyLatent(io.ComfyNode):
             candidate_ar = w / h
             if candidate_ar < min_ar or candidate_ar > max_ar:
                 continue
-            mp = (w * h) / (1024 * 1024)
+            mp = (w * h) / 1_000_000
             mp_err_rel = abs(mp - target_mp) / target_mp
             ar_err_rel = abs(candidate_ar - ar) / ar
             mp_weight = 10.0
@@ -125,7 +125,11 @@ class OptiEmptyLatent(io.ComfyNode):
         latent_alignment: str,
         batch_size: int,
     ) -> io.NodeOutput:
-        cfg = cls.MODEL_CONFIG[latent_alignment]
+        cfg = cls.MODEL_CONFIG.get(latent_alignment)
+        if cfg is None:
+            return io.NodeOutput(
+                None, 0, 0, 0, f"Error: Unknown latent_alignment '{latent_alignment}'"
+            )
         if not optimization:
             try:
                 w, h = parse_exact_dimensions(dimensions)
@@ -138,7 +142,7 @@ class OptiEmptyLatent(io.ComfyNode):
                     h,
                     batch_size,
                     cfg["spacial_downscale_ratio"],
-                    cls.device,
+                    intermediate_device(),
                 )
                 details = (
                     f"Exact Resolution: {w}x{h} px\n"
@@ -171,7 +175,7 @@ class OptiEmptyLatent(io.ComfyNode):
                     h,
                     batch_size,
                     cfg["spacial_downscale_ratio"],
-                    cls.device,
+                    intermediate_device(),
                 )
                 details = (
                     f"{clamp_warning}Optimized Resolution: {w}x{h} px\n"

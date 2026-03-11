@@ -1,31 +1,22 @@
 import logging
-from typing import Optional, Union
+from typing import Optional
 
 from comfy_api.latest import io
-from transformers import CLIPTokenizer, T5Tokenizer
-
-from .encoder_mapping import ENCODER_MODEL_MAPPING
 
 
 class FensTokenCounter(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
-        encoder_keys = list(ENCODER_MODEL_MAPPING.keys())
-        default_encoder = "CLIP BigG-14 (LAION, Patch 14)"
-        if default_encoder not in encoder_keys:
-            default_encoder = encoder_keys[0] if encoder_keys else ""
         return io.Schema(
             node_id="FensTokenCounter",
             display_name="Fens Token Counter",
             category="Fens_Simple_Nodes/Utility",
             search_aliases=["token", "tokens", "token count", "count tokens"],
-            description="Get the token count of a prompt using the selected encoders.",
+            description="Count typed prompt tokens and show the active tokenizer context window usage.",
             inputs=[
-                io.Combo.Input(
-                    "primary_encoder",
-                    options=encoder_keys,
-                    default=default_encoder,
-                    tooltip="Select the primary encoder to use.",
+                io.Clip.Input(
+                    "clip",
+                    tooltip="ComfyUI CLIP object (text encoder stack) from the current workflow.",
                 ),
                 io.String.Input(
                     "text",
@@ -34,11 +25,30 @@ class FensTokenCounter(io.ComfyNode):
                     tooltip="The text to be encoded or counted.",
                     optional=True,
                 ),
+                io.Combo.Input(
+                    "count_strategy",
+                    options=["max_stream", "sum_streams"],
+                    default="max_stream",
+                    advanced=True,
+                    tooltip="How to aggregate counts across tokenizer branches (e.g. l/g/t5xxl): max_stream = largest branch count, sum_streams = sum of all branches.",
+                ),
             ],
             outputs=[
                 io.Int.Output(
                     display_name="total_tokens",
-                    tooltip="The token count using the selected encoders.",
+                    tooltip="Typed token count (excluding padding and most special tokens).",
+                ),
+                io.Int.Output(
+                    display_name="context_limit_tokens",
+                    tooltip="Total available tokens in the active context window tier (e.g. 77, 154, 231).",
+                ),
+                io.Int.Output(
+                    display_name="chunk_count",
+                    tooltip="Number of tokenizer chunks/windows used for this prompt.",
+                ),
+                io.String.Output(
+                    display_name="details",
+                    tooltip="Human-readable summary of typed tokens and context usage.",
                 ),
                 io.String.Output(
                     display_name="text",
@@ -47,48 +57,83 @@ class FensTokenCounter(io.ComfyNode):
             ],
         )
 
-    # Class-level tokenizer cache
-    _tokenizer_cache: dict[str, Union[CLIPTokenizer, T5Tokenizer]] = {}
+    @classmethod
+    def _count_stream_prompt_tokens(cls, stream_batches: list[list[tuple]]) -> int:
+        total = 0
+        for batch in stream_batches:
+            for token_item in batch:
+                # With return_word_ids=True, Comfy tokenizers generally return
+                # token-weight tuples with word_id metadata:
+                # (token, weight, word_id). Special tokens typically use word_id=0.
+                if isinstance(token_item, (tuple, list)) and len(token_item) >= 3:
+                    if token_item[2] > 0:
+                        total += 1
+                else:
+                    total += 1
+        return total
 
     @classmethod
-    def _get_tokenizer(cls, model_name: str) -> Union[CLIPTokenizer, T5Tokenizer]:
-        """Load tokenizer with automatic model downloading from HuggingFace."""
-        try:
-            if "t5" in model_name.lower():
-                return T5Tokenizer.from_pretrained(model_name, legacy=True)
-            return CLIPTokenizer.from_pretrained(model_name)
-        except Exception as e:
-            logging.error(
-                f"FensTokenCounter: Failed to load tokenizer {model_name}. Error: {e}"
-            )
-            raise
+    def _stream_context_limit_tokens(cls, stream_batches: list[list[tuple]]) -> int:
+        return sum(len(batch) for batch in stream_batches)
 
     @classmethod
-    def execute(cls, primary_encoder: str, text: Optional[str] = None) -> io.NodeOutput:
-        if not primary_encoder:
-            logging.warning("FensTokenCounter: No primary_encoder provided.")
-            return io.NodeOutput(0, text or "")
+    def execute(
+        cls,
+        clip,
+        text: Optional[str] = None,
+        count_strategy: str = "max_stream",
+    ) -> io.NodeOutput:
+        if clip is None:
+            logging.warning("FensTokenCounter: clip input is None.")
+            return io.NodeOutput(0, 0, 0, "No CLIP input connected.", text or "")
 
         if not text or not text.strip():
-            return io.NodeOutput(0, text or "")
-
-        model_name = ENCODER_MODEL_MAPPING.get(primary_encoder)
-        if not model_name:
-            logging.warning(
-                f"FensTokenCounter: Encoder '{primary_encoder}' not found in mapping."
-            )
-            return io.NodeOutput(0, text or "")
+            return io.NodeOutput(0, 0, 0, "No prompt text provided.", text or "")
 
         try:
-            if model_name not in cls._tokenizer_cache:
-                logging.info(f"FensTokenCounter: Loading tokenizer for {model_name}...")
-                cls._tokenizer_cache[model_name] = cls._get_tokenizer(model_name)
+            # token_streams is a dict keyed by tokenizer branch names
+            # (for example l/g/t5xxl).
+            token_streams = clip.tokenize(text, return_word_ids=True)
+            if not isinstance(token_streams, dict) or not token_streams:
+                return io.NodeOutput(
+                    0, 0, 0, "Tokenizer returned no token streams.", text
+                )
 
-            tokenizer = cls._tokenizer_cache[model_name]
-            token_count = len(tokenizer.tokenize(text))
-            return io.NodeOutput(token_count, text)
-        except Exception as e:
-            logging.error(
-                f"FensTokenCounter: Failed to tokenize text with {primary_encoder}. Error: {e}"
+            prompt_counts = [
+                cls._count_stream_prompt_tokens(stream_batches)
+                for stream_batches in token_streams.values()
+            ]
+            context_limits = [
+                cls._stream_context_limit_tokens(stream_batches)
+                for stream_batches in token_streams.values()
+            ]
+            chunk_counts = [
+                len(stream_batches) for stream_batches in token_streams.values()
+            ]
+
+            if count_strategy == "sum_streams":
+                token_count = sum(prompt_counts)
+                context_limit_tokens = sum(context_limits)
+                chunk_count = sum(chunk_counts)
+            else:
+                token_count = max(prompt_counts)
+                context_limit_tokens = max(context_limits)
+                chunk_count = max(chunk_counts)
+
+            details = (
+                f"Prompt tokens: {token_count} | "
+                f"Context limit: {context_limit_tokens} | "
+                f"Chunks: {chunk_count} | "
+                f"Strategy: {count_strategy}"
             )
-            return io.NodeOutput(0, text or "")
+
+            return io.NodeOutput(
+                token_count,
+                context_limit_tokens,
+                chunk_count,
+                details,
+                text,
+            )
+        except Exception as e:
+            logging.error(f"FensTokenCounter: Failed to tokenize text. Error: {e}")
+            return io.NodeOutput(0, 0, 0, f"Error: {e}", text or "")

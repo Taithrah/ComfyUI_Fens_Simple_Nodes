@@ -1,21 +1,37 @@
 {
   "FensTokenCounter": {
     "display_name": "Fens Token Counter",
-    "description": "Get the token count of a prompt using the selected encoder.",
+    "description": "Count typed prompt tokens and show the active tokenizer context window usage.",
     "inputs": {
-      "primary_encoder": {
-        "name": "Primary Encoder",
-        "tooltip": "Select the encoder to use for token counting."
+      "clip": {
+        "name": "Clip",
+        "tooltip": "ComfyUI CLIP object (text encoder stack) from the current workflow."
       },
       "text": {
         "name": "Prompt Text",
         "tooltip": "The prompt or text to count tokens for."
+      },
+      "count_strategy": {
+        "name": "Count Strategy",
+        "tooltip": "How to aggregate counts across tokenizer branches (e.g. l/g/t5xxl): max_stream = largest branch count, sum_streams = sum of all branches."
       }
     },
     "outputs": {
       "total_tokens": {
         "name": "Token Count",
-        "tooltip": "The number of tokens in the prompt using the selected encoder."
+        "tooltip": "Typed token count (excluding padding and most special tokens)."
+      },
+      "context_limit_tokens": {
+        "name": "Context Limit",
+        "tooltip": "Total available tokens in the active context window tier (e.g. 77, 154, 231)."
+      },
+      "chunk_count": {
+        "name": "Chunk Count",
+        "tooltip": "Number of tokenizer chunks/windows used for this prompt."
+      },
+      "details": {
+        "name": "Details",
+        "tooltip": "Human-readable summary of typed tokens and context usage."
       },
       "text": {
         "name": "Prompt Text",
@@ -31,17 +47,17 @@
         "name": "Dimensions",
         "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
       },
-      "invert": {
-        "name": "Invert",
-        "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
+      "latent_alignment": {
+        "name": "Latent Alignment",
+        "tooltip": "Optimization preset for model type. Only preset configurations are available."
       },
       "optimization": {
         "name": "Optimization",
         "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec."
       },
-      "latent_alignment": {
-        "name": "Latent Alignment",
-        "tooltip": "Optimization preset for model type. Only preset configurations are available."
+      "invert": {
+        "name": "Invert",
+        "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
       },
       "batch_size": {
         "name": "Batch Size",
@@ -79,13 +95,21 @@
         "name": "Dimensions",
         "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
       },
-      "invert": {
-        "name": "Invert",
-        "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
+      "latent_alignment": {
+        "name": "Latent Alignment",
+        "tooltip": "Optimization preset for model type. Select 'Custom' to set your own parameters."
       },
       "optimization": {
         "name": "Optimization",
         "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec."
+      },
+      "invert": {
+        "name": "Invert",
+        "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
+      },
+      "batch_size": {
+        "name": "Batch Size",
+        "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
       },
       "block_size": {
         "name": "Block Size",
@@ -102,10 +126,6 @@
       "search_range": {
         "name": "Search Range",
         "tooltip": "Search range for optimization. Higher values search more possibilities. (Only used when 'Custom' is selected.)"
-      },
-      "batch_size": {
-        "name": "Batch Size",
-        "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
       }
     },
     "outputs": {

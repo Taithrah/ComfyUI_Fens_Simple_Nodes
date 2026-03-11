@@ -14,7 +14,6 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
     config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
     with open(config_path, "r", encoding="utf-8") as f:
         MODEL_CONFIG = yaml.safe_load(f)
-    device = intermediate_device()
 
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -39,21 +38,21 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     default="1:1",
                     tooltip="Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE.",
                 ),
-                io.Boolean.Input(
-                    "invert",
-                    default=False,
-                    tooltip="Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16).",
+                io.Combo.Input(
+                    "latent_alignment",
+                    options=alignment_options,
+                    default="SDXL (1024px)",
+                    tooltip="Optimization preset for model type. Select 'Custom' to set your own parameters.",
                 ),
                 io.Boolean.Input(
                     "optimization",
                     default=True,
                     tooltip="TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format).",
                 ),
-                io.Combo.Input(
-                    "latent_alignment",
-                    options=alignment_options,
-                    default="SDXL (1024px)",
-                    tooltip="Optimization preset for model type. Select 'Custom' to set your own parameters.",
+                io.Boolean.Input(
+                    "invert",
+                    default=False,
+                    tooltip="Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16).",
                 ),
                 io.Int.Input(
                     "batch_size",
@@ -68,6 +67,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     min=8,
                     max=64,
                     step=8,
+                    advanced=True,
                     tooltip="Pixel dimension alignment constraint. (Only used when 'Custom' is selected.)",
                 ),
                 io.Int.Input(
@@ -76,14 +76,16 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     min=8,
                     max=64,
                     step=2,
+                    advanced=True,
                     tooltip="The VAE's total downsampling factor. (Only used when 'Custom' is selected.)",
                 ),
                 io.Float.Input(
                     "target_mp",
                     default=cls.MODEL_CONFIG["Custom"]["target_mp"],
-                    min=0.1,
-                    max=16.0,
-                    step=0.1,
+                    min=0.05,
+                    max=32.0,
+                    step=0.001,
+                    advanced=True,
                     tooltip="Target megapixels. (Only used when 'Custom' is selected.)",
                 ),
                 io.Int.Input(
@@ -91,6 +93,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     default=cls.MODEL_CONFIG["Custom"]["search_range"],
                     min=1,
                     max=100,
+                    advanced=True,
                     tooltip="Search range for optimization. Higher values search more possibilities. (Only used when 'Custom' is selected.)",
                 ),
             ],
@@ -112,37 +115,35 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
     def _find_resolution(
         cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
     ) -> tuple[int, int]:
-        ideal_px = target_mp * 1024 * 1024
-        ideal_h = math.sqrt(ideal_px / ar)
-        ideal_w = ar * ideal_h
-        start_h = align(ideal_h, block)
-        start_w = align(ideal_w, block)
+        ideal_px = target_mp * 1_000_000
+        raw_h = math.sqrt(ideal_px / ar)
         search_range = int(model_cfg.get("search_range", 5 if block >= 32 else 10))
         min_ar = float(model_cfg.get("min_ar", 0.5))
         max_ar = float(model_cfg.get("max_ar", 3.75))
         best_score = float("inf")
         best_w = best_h = 0
-        for h_delta in range(-search_range, search_range + 1):
-            for w_delta in range(-search_range, search_range + 1):
-                h_candidate = start_h + (h_delta * block)
-                w_candidate = start_w + (w_delta * block)
-                if h_candidate < block or w_candidate < block:
-                    continue
-                candidate_ar = w_candidate / h_candidate
-                if candidate_ar < min_ar or candidate_ar > max_ar:
-                    continue
-                actual_mp = (w_candidate * h_candidate) / (1024 * 1024)
-                mp_error = abs(actual_mp - target_mp) / target_mp
-                ar_error = abs(candidate_ar - ar) / ar
-                mp_weight = 10.0
-                ar_weight = 1.0
-                score = (mp_weight * mp_error) + (ar_weight * ar_error)
-                if abs(score - best_score) < 1e-9:
-                    if (w_candidate * h_candidate) > (best_w * best_h):
-                        best_w, best_h = w_candidate, h_candidate
-                elif score < best_score:
-                    best_score = score
-                    best_w, best_h = w_candidate, h_candidate
+        for delta in range(-search_range, search_range + 1):
+            h_try = raw_h + delta * block
+            w_try = ar * h_try
+            w = align(w_try, block)
+            h = align(h_try, block)
+            if w < block or h < block:
+                continue
+            candidate_ar = w / h
+            if candidate_ar < min_ar or candidate_ar > max_ar:
+                continue
+            actual_mp = (w * h) / 1_000_000
+            mp_error = abs(actual_mp - target_mp) / target_mp
+            ar_error = abs(candidate_ar - ar) / ar
+            mp_weight = 10.0
+            ar_weight = 1.0
+            score = (mp_weight * mp_error) + (ar_weight * ar_error)
+            if abs(score - best_score) < 1e-9:
+                if (w * h) > (best_w * best_h):
+                    best_w, best_h = w, h
+            elif score < best_score:
+                best_score = score
+                best_w, best_h = w, h
         if best_w == 0 or best_h == 0:
             raise ValueError(
                 f"No valid resolution found for AR~{ar:.3f}, target {target_mp}MP, "
@@ -187,7 +188,15 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 }
             )
         else:
-            cfg = cls.MODEL_CONFIG[latent_alignment]
+            cfg = cls.MODEL_CONFIG.get(latent_alignment)
+            if cfg is None:
+                return io.NodeOutput(
+                    None,
+                    0,
+                    0,
+                    0,
+                    f"Error: Unknown latent_alignment '{latent_alignment}'",
+                )
         if not optimization:
             try:
                 w, h = parse_exact_dimensions(dimensions)
@@ -200,7 +209,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     h,
                     batch_size,
                     cfg["spacial_downscale_ratio"],
-                    cls.device,
+                    intermediate_device(),
                 )
                 details = cls._generate_details(w, h, w / h, cfg, "Custom")
                 return io.NodeOutput(latent, w, h, cfg["block_size"], details)
@@ -228,7 +237,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     h,
                     batch_size,
                     cfg["spacial_downscale_ratio"],
-                    cls.device,
+                    intermediate_device(),
                 )
                 details = cls._generate_details(
                     w, h, w / h, cfg, latent_alignment, clamp_warning
