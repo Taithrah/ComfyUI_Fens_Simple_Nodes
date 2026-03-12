@@ -6,7 +6,12 @@ import yaml
 from comfy.model_management import intermediate_device
 from comfy_api.latest import io
 
-from .latent_utils import align, make_latent, parse_exact_dimensions, parse_ratio
+from .latent_utils import (
+    align,
+    make_latent,
+    parse_exact_dimensions,
+    parse_ratio,
+)
 
 
 class OptiEmptyLatentAdvanced(io.ComfyNode):

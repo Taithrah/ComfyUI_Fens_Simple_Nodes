@@ -135,5 +135,5 @@ class FensTokenCounter(io.ComfyNode):
                 text,
             )
         except Exception as e:
-            logging.error(f"FensTokenCounter: Failed to tokenize text. Error: {e}")
+            logging.error("FensTokenCounter: Failed to tokenize text. Error: %s", e)
             return io.NodeOutput(0, 0, 0, f"Error: {e}", text or "")

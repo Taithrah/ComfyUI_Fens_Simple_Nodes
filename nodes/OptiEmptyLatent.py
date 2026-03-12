@@ -6,7 +6,12 @@ import yaml
 from comfy.model_management import intermediate_device
 from comfy_api.latest import io
 
-from .latent_utils import align, make_latent, parse_exact_dimensions, parse_ratio
+from .latent_utils import (
+    align,
+    make_latent,
+    parse_exact_dimensions,
+    parse_ratio,
+)
 
 
 class OptiEmptyLatent(io.ComfyNode):
@@ -17,7 +22,6 @@ class OptiEmptyLatent(io.ComfyNode):
 
     @classmethod
     def define_schema(cls) -> io.Schema:
-        # Keep Custom preset for the advanced node only.
         alignment_options = [k for k in cls.MODEL_CONFIG.keys() if k != "Custom"]
         return io.Schema(
             node_id="OptiEmptyLatent",
