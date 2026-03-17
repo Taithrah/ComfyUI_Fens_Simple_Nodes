@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import math
 import os
 from typing import Any, Dict
 
 import yaml
-from comfy.model_management import intermediate_device
+from comfy.model_management import intermediate_device, intermediate_dtype
 from comfy_api.latest import io
 
 from .latent_utils import (
@@ -116,11 +118,13 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
             ],
         )
 
+    PIXEL_SCALE = 1024 * 1024
+
     @classmethod
     def _find_resolution(
         cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
     ) -> tuple[int, int]:
-        ideal_px = target_mp * 1_000_000
+        ideal_px = target_mp * cls.PIXEL_SCALE
         raw_h = math.sqrt(ideal_px / ar)
         search_range = int(model_cfg.get("search_range", 5 if block >= 32 else 10))
         min_ar = float(model_cfg.get("min_ar", 0.5))
@@ -137,7 +141,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
             candidate_ar = w / h
             if candidate_ar < min_ar or candidate_ar > max_ar:
                 continue
-            actual_mp = (w * h) / 1_000_000
+            actual_mp = (w * h) / cls.PIXEL_SCALE
             mp_error = abs(actual_mp - target_mp) / target_mp
             ar_error = abs(candidate_ar - ar) / ar
             mp_weight = 10.0
@@ -161,7 +165,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
         details = (
             f"Resolution: {w}x{h} px\n"
             f"Aspect Ratio: {ar:.4f}\n"
-            f"Target MP: {cfg['target_mp']}, Actual MP: {(w * h) / 1e6:.3f}\n"
+            f"Target MP: {cfg['target_mp']}, Actual MP: {(w * h) / cls.PIXEL_SCALE:.3f}\n"
             f"Block Size: {cfg['block_size']}, VAE Scale: {cfg['spacial_downscale_ratio']}\n"
             f"Model: {cfg.get('desc', latent_alignment)}"
         )
@@ -215,8 +219,15 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     batch_size,
                     cfg["spacial_downscale_ratio"],
                     intermediate_device(),
+                    dtype=intermediate_dtype(),
                 )
-                details = cls._generate_details(w, h, w / h, cfg, "Custom")
+                details = cls._generate_details(
+                    w,
+                    h,
+                    w / h,
+                    cfg,
+                    latent_alignment if latent_alignment != "Custom" else "Custom",
+                )
                 return io.NodeOutput(latent, w, h, cfg["block_size"], details)
             except Exception as e:
                 return io.NodeOutput(None, 0, 0, cfg["block_size"], f"Error: {e}")
@@ -243,6 +254,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     batch_size,
                     cfg["spacial_downscale_ratio"],
                     intermediate_device(),
+                    dtype=intermediate_dtype(),
                 )
                 details = cls._generate_details(
                     w, h, w / h, cfg, latent_alignment, clamp_warning

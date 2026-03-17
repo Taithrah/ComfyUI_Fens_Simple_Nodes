@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import math
 import os
 from typing import Any, Dict
 
 import yaml
-from comfy.model_management import intermediate_device
+from comfy.model_management import intermediate_device, intermediate_dtype
 from comfy_api.latest import io
 
 from .latent_utils import (
@@ -80,11 +82,13 @@ class OptiEmptyLatent(io.ComfyNode):
             ],
         )
 
+    PIXEL_SCALE = 1024 * 1024
+
     @classmethod
     def _find_resolution(
         cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
     ) -> tuple[int, int]:
-        ideal_px = target_mp * 1_000_000
+        ideal_px = target_mp * cls.PIXEL_SCALE
         raw_h = math.sqrt(ideal_px / ar)
         search_range = int(model_cfg.get("search_range", 10))
         min_ar = float(model_cfg.get("min_ar", 0.5))
@@ -101,7 +105,7 @@ class OptiEmptyLatent(io.ComfyNode):
             candidate_ar = w / h
             if candidate_ar < min_ar or candidate_ar > max_ar:
                 continue
-            mp = (w * h) / 1_000_000
+            mp = (w * h) / cls.PIXEL_SCALE
             mp_err_rel = abs(mp - target_mp) / target_mp
             ar_err_rel = abs(candidate_ar - ar) / ar
             mp_weight = 10.0
@@ -147,6 +151,7 @@ class OptiEmptyLatent(io.ComfyNode):
                     batch_size,
                     cfg["spacial_downscale_ratio"],
                     intermediate_device(),
+                    dtype=intermediate_dtype(),
                 )
                 details = (
                     f"Exact Resolution: {w}x{h} px\n"
@@ -180,11 +185,12 @@ class OptiEmptyLatent(io.ComfyNode):
                     batch_size,
                     cfg["spacial_downscale_ratio"],
                     intermediate_device(),
+                    dtype=intermediate_dtype(),
                 )
                 details = (
                     f"{clamp_warning}Optimized Resolution: {w}x{h} px\n"
                     f"Aspect Ratio: {w / h:.4f} (requested: {dimensions})\n"
-                    f"Target MP: {cfg['target_mp']}, Actual MP: {(w * h) / 1e6:.3f}\n"
+                    f"Target MP: {cfg['target_mp']}, Actual MP: {(w * h) / cls.PIXEL_SCALE:.3f}\n"
                     f"Block Size: {cfg['block_size']}, VAE Scale: {cfg['spacial_downscale_ratio']}\n"
                     f"Model: {cfg.get('desc', latent_alignment)}"
                 )

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from typing import Optional
 
@@ -62,13 +64,16 @@ class FensTokenCounter(io.ComfyNode):
         total = 0
         for batch in stream_batches:
             for token_item in batch:
-                # With return_word_ids=True, Comfy tokenizers generally return
-                # token-weight tuples with word_id metadata:
-                # (token, weight, word_id). Special tokens typically use word_id=0.
                 if isinstance(token_item, (tuple, list)) and len(token_item) >= 3:
-                    if token_item[2] > 0:
+                    word_id = token_item[2]
+                    if isinstance(word_id, int) and word_id > 0:
                         total += 1
+                    # Ignore special tokens (word_id == 0 or None)
+                elif isinstance(token_item, int):
+                    # Simple token ids with no metadata
+                    total += 1
                 else:
+                    # Fallback to one token for unknown item structure
                     total += 1
         return total
 
@@ -115,7 +120,15 @@ class FensTokenCounter(io.ComfyNode):
                 token_count = sum(prompt_counts)
                 context_limit_tokens = sum(context_limits)
                 chunk_count = sum(chunk_counts)
+            elif count_strategy == "max_stream":
+                token_count = max(prompt_counts)
+                context_limit_tokens = max(context_limits)
+                chunk_count = max(chunk_counts)
             else:
+                logging.warning(
+                    "FensTokenCounter: Unknown count_strategy '%s', using max_stream.",
+                    count_strategy,
+                )
                 token_count = max(prompt_counts)
                 context_limit_tokens = max(context_limits)
                 chunk_count = max(chunk_counts)
