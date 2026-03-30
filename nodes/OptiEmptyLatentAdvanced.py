@@ -7,6 +7,7 @@ from typing import Any, Dict
 import yaml
 from comfy.model_management import intermediate_device, intermediate_dtype
 from comfy_api.latest import io
+from typing_extensions import override
 
 from .latent_utils import (
     align,
@@ -17,12 +18,17 @@ from .latent_utils import (
 
 
 class OptiEmptyLatentAdvanced(io.ComfyNode):
-    LATENT_CHANNELS: int = 4
+    """
+    Node to create an empty latent tensor with optimal or exact resolution for a given aspect ratio or WxH, with advanced customization.
+    Integrates tightly with ComfyUI V3 node API and provides UI-friendly output.
+    """
+
     config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
     with open(config_path, "r", encoding="utf-8") as f:
         MODEL_CONFIG = yaml.safe_load(f)
 
     @classmethod
+    @override
     def define_schema(cls) -> io.Schema:
         preset_names = list(cls.MODEL_CONFIG.keys())
         alignment_options = preset_names + ["Custom"]
@@ -42,27 +48,32 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
             inputs=[
                 io.String.Input(
                     "dimensions",
+                    display_name="Dimensions",
                     default="1:1",
                     tooltip="Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE.",
                 ),
                 io.Combo.Input(
                     "latent_alignment",
+                    display_name="Latent Alignment",
                     options=alignment_options,
                     default="SDXL (1024px)",
                     tooltip="Optimization preset for model type. Select 'Custom' to set your own parameters.",
                 ),
                 io.Boolean.Input(
                     "optimization",
+                    display_name="Optimization",
                     default=True,
                     tooltip="TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format).",
                 ),
                 io.Boolean.Input(
                     "invert",
+                    display_name="Invert",
                     default=False,
                     tooltip="Swap width and height (invert aspect ratio, e.g. 16:9 > 9:16).",
                 ),
                 io.Int.Input(
                     "batch_size",
+                    display_name="Batch Size",
                     default=1,
                     min=1,
                     max=4096,
@@ -70,6 +81,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
                 io.Int.Input(
                     "block_size",
+                    display_name="Block Size",
                     default=cls.MODEL_CONFIG["Custom"]["block_size"],
                     min=8,
                     max=64,
@@ -79,6 +91,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
                 io.Int.Input(
                     "spacial_downscale_ratio",
+                    display_name="Spacial Downscale Ratio",
                     default=cls.MODEL_CONFIG["Custom"]["spacial_downscale_ratio"],
                     min=8,
                     max=64,
@@ -88,6 +101,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
                 io.Float.Input(
                     "target_mp",
+                    display_name="Target MP",
                     default=cls.MODEL_CONFIG["Custom"]["target_mp"],
                     min=0.05,
                     max=32.0,
@@ -97,6 +111,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
                 io.Int.Input(
                     "search_range",
+                    display_name="Search Range",
                     default=cls.MODEL_CONFIG["Custom"]["search_range"],
                     min=1,
                     max=100,
@@ -105,17 +120,23 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.Latent.Output(display_name="latent", tooltip="Latent tensor"),
-                io.Int.Output(display_name="width", tooltip="Width"),
-                io.Int.Output(display_name="height", tooltip="Height"),
+                io.Latent.Output(
+                    "latent", display_name="Latent", tooltip="Latent tensor"
+                ),
+                io.Int.Output("width", display_name="Width", tooltip="Width"),
+                io.Int.Output("height", display_name="Height", tooltip="Height"),
                 io.Int.Output(
-                    display_name="block_size",
+                    "block_size",
+                    display_name="Block Size",
                     tooltip="Block size used for the calculation.",
                 ),
                 io.String.Output(
-                    display_name="details", tooltip="Details about the calculation"
+                    "details",
+                    display_name="Details",
+                    tooltip="Details about the calculation",
                 ),
             ],
+            is_experimental=False,
         )
 
     PIXEL_SCALE = 1024 * 1024
@@ -124,6 +145,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
     def _find_resolution(
         cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
     ) -> tuple[int, int]:
+        """Find the optimal resolution for a given aspect ratio and MP target."""
         ideal_px = target_mp * cls.PIXEL_SCALE
         raw_h = math.sqrt(ideal_px / ar)
         search_range = int(model_cfg.get("search_range", 5 if block >= 32 else 10))
@@ -162,6 +184,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
 
     @classmethod
     def _generate_details(cls, w, h, ar, cfg, latent_alignment, clamp_warning=""):
+        """Generate a details string for the output."""
         details = (
             f"Resolution: {w}x{h} px\n"
             f"Aspect Ratio: {ar:.4f}\n"
@@ -174,6 +197,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
         return details
 
     @classmethod
+    @override
     def execute(
         cls,
         dimensions: str,
@@ -199,13 +223,8 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
         else:
             cfg = cls.MODEL_CONFIG.get(latent_alignment)
             if cfg is None:
-                return io.NodeOutput(
-                    None,
-                    0,
-                    0,
-                    0,
-                    f"Error: Unknown latent_alignment '{latent_alignment}'",
-                )
+                msg = f"Error: Unknown latent_alignment '{latent_alignment}'"
+                return io.NodeOutput(None, 0, 0, 0, msg)
         if not optimization:
             try:
                 w, h = parse_exact_dimensions(dimensions)
@@ -228,9 +247,12 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     cfg,
                     latent_alignment if latent_alignment != "Custom" else "Custom",
                 )
+                # Optionally, provide a UI preview for details (uncomment if desired)
+                # preview = ui.PreviewText(details)
                 return io.NodeOutput(latent, w, h, cfg["block_size"], details)
             except Exception as e:
-                return io.NodeOutput(None, 0, 0, cfg["block_size"], f"Error: {e}")
+                msg = f"Error: {e}"
+                return io.NodeOutput(None, 0, 0, cfg["block_size"], msg)
         else:
             try:
                 ar = parse_ratio(dimensions)
@@ -259,6 +281,9 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                 details = cls._generate_details(
                     w, h, w / h, cfg, latent_alignment, clamp_warning
                 )
+                # Optionally, provide a UI preview for details (uncomment if desired)
+                # preview = ui.PreviewText(details)
                 return io.NodeOutput(latent, w, h, cfg["block_size"], details)
             except Exception as e:
-                return io.NodeOutput(None, 0, 0, cfg["block_size"], f"Error: {e}")
+                msg = f"Error: {e}"
+                return io.NodeOutput(None, 0, 0, cfg["block_size"], msg)

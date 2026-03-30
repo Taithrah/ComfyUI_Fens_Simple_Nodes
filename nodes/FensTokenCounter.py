@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from comfy_api.latest import io
+from typing_extensions import override
 
 
 class FensTokenCounter(io.ComfyNode):
+    """
+    Counts prompt tokens using the provided CLIP object and shows context window usage.
+    Integrates tightly with ComfyUI V3 node API and provides UI-friendly output.
+    """
+
     @classmethod
+    @override
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="FensTokenCounter",
@@ -18,10 +25,12 @@ class FensTokenCounter(io.ComfyNode):
             inputs=[
                 io.Clip.Input(
                     "clip",
+                    display_name="CLIP",
                     tooltip="ComfyUI CLIP object (text encoder stack) from the current workflow.",
                 ),
                 io.String.Input(
                     "text",
+                    display_name="Prompt Text",
                     multiline=True,
                     dynamic_prompts=True,
                     tooltip="The text to be encoded or counted.",
@@ -29,6 +38,7 @@ class FensTokenCounter(io.ComfyNode):
                 ),
                 io.Combo.Input(
                     "count_strategy",
+                    display_name="Count Strategy",
                     options=["max_stream", "sum_streams"],
                     default="max_stream",
                     advanced=True,
@@ -37,30 +47,37 @@ class FensTokenCounter(io.ComfyNode):
             ],
             outputs=[
                 io.Int.Output(
-                    display_name="total_tokens",
+                    "total_tokens",
+                    display_name="Total Tokens",
                     tooltip="Typed token count (excluding padding and most special tokens).",
                 ),
                 io.Int.Output(
-                    display_name="context_limit_tokens",
+                    "context_limit_tokens",
+                    display_name="Context Limit Tokens",
                     tooltip="Total available tokens in the active context window tier (e.g. 77, 154, 231).",
                 ),
                 io.Int.Output(
-                    display_name="chunk_count",
+                    "chunk_count",
+                    display_name="Chunk Count",
                     tooltip="Number of tokenizer chunks/windows used for this prompt.",
                 ),
                 io.String.Output(
-                    display_name="details",
+                    "details",
+                    display_name="Details",
                     tooltip="Human-readable summary of typed tokens and context usage.",
                 ),
                 io.String.Output(
-                    display_name="text",
+                    "text",
+                    display_name="Prompt Echo",
                     tooltip="The input prompt (multiline string).",
                 ),
             ],
+            is_experimental=False,
         )
 
     @classmethod
-    def _count_stream_prompt_tokens(cls, stream_batches: list[list[tuple]]) -> int:
+    def _count_stream_prompt_tokens(cls, stream_batches: list[list[Any]]) -> int:
+        """Count non-special tokens in a stream batch."""
         total = 0
         for batch in stream_batches:
             for token_item in batch:
@@ -68,41 +85,44 @@ class FensTokenCounter(io.ComfyNode):
                     word_id = token_item[2]
                     if isinstance(word_id, int) and word_id > 0:
                         total += 1
-                    # Ignore special tokens (word_id == 0 or None)
                 elif isinstance(token_item, int):
-                    # Simple token ids with no metadata
                     total += 1
                 else:
-                    # Fallback to one token for unknown item structure
                     total += 1
         return total
 
     @classmethod
-    def _stream_context_limit_tokens(cls, stream_batches: list[list[tuple]]) -> int:
+    def _stream_context_limit_tokens(cls, stream_batches: list[list[Any]]) -> int:
+        """Count total tokens (including padding/special) in all batches."""
         return sum(len(batch) for batch in stream_batches)
 
     @classmethod
+    @override
     def execute(
         cls,
-        clip,
+        clip: Any,
         text: Optional[str] = None,
         count_strategy: str = "max_stream",
     ) -> io.NodeOutput:
+        """
+        Count prompt tokens and context window usage for a given text and CLIP object.
+        Returns token count, context limit, chunk count, details, and prompt echo.
+        """
         if clip is None:
-            logging.warning("FensTokenCounter: clip input is None.")
-            return io.NodeOutput(0, 0, 0, "No CLIP input connected.", text or "")
+            msg = "No CLIP input connected."
+            logging.warning(f"FensTokenCounter: {msg}")
+            return io.NodeOutput(0, 0, 0, msg, text or "")
 
         if not text or not text.strip():
-            return io.NodeOutput(0, 0, 0, "No prompt text provided.", text or "")
+            msg = "No prompt text provided."
+            return io.NodeOutput(0, 0, 0, msg, text or "")
 
         try:
-            # token_streams is a dict keyed by tokenizer branch names
-            # (for example l/g/t5xxl).
+            # token_streams is a dict keyed by tokenizer branch names (e.g. l/g/t5xxl)
             token_streams = clip.tokenize(text, return_word_ids=True)
             if not isinstance(token_streams, dict) or not token_streams:
-                return io.NodeOutput(
-                    0, 0, 0, "Tokenizer returned no token streams.", text
-                )
+                msg = "Tokenizer returned no token streams."
+                return io.NodeOutput(0, 0, 0, msg, text)
 
             prompt_counts = [
                 cls._count_stream_prompt_tokens(stream_batches)
@@ -126,8 +146,7 @@ class FensTokenCounter(io.ComfyNode):
                 chunk_count = max(chunk_counts)
             else:
                 logging.warning(
-                    "FensTokenCounter: Unknown count_strategy '%s', using max_stream.",
-                    count_strategy,
+                    f"FensTokenCounter: Unknown count_strategy '{count_strategy}', using max_stream."
                 )
                 token_count = max(prompt_counts)
                 context_limit_tokens = max(context_limits)
@@ -140,6 +159,9 @@ class FensTokenCounter(io.ComfyNode):
                 f"Strategy: {count_strategy}"
             )
 
+            # Optionally, provide a UI preview for details (uncomment if desired)
+            # preview = ui.PreviewText(details)
+
             return io.NodeOutput(
                 token_count,
                 context_limit_tokens,
@@ -148,5 +170,6 @@ class FensTokenCounter(io.ComfyNode):
                 text,
             )
         except Exception as e:
-            logging.error("FensTokenCounter: Failed to tokenize text. Error: %s", e)
-            return io.NodeOutput(0, 0, 0, f"Error: {e}", text or "")
+            msg = f"Error: {e}"
+            logging.error(f"FensTokenCounter: Failed to tokenize text. {msg}")
+            return io.NodeOutput(0, 0, 0, msg, text or "")

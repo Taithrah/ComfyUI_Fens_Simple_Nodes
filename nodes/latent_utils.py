@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Tuple
+from typing import Any
 
 import torch
 from comfy.model_management import intermediate_dtype
 
 
 def parse_ratio(dimensions: str) -> float:
+    """
+    Parse a string representing an aspect ratio (W:H, WxH, or decimal) and return the float ratio (W/H).
+    Raises ValueError for invalid formats or non-positive values.
+    """
     s = dimensions.strip()
     if ":" in s:
         parts = s.split(":", 1)
@@ -22,7 +26,7 @@ def parse_ratio(dimensions: str) -> float:
         return value
 
     if len(parts) != 2:
-        raise ValueError("Invalid ratio format. Use W:H or WxH")
+        raise ValueError(f"Invalid ratio format. Use W:H or WxH, got '{dimensions}'")
 
     try:
         w, h = map(float, map(str.strip, parts))
@@ -36,17 +40,23 @@ def parse_ratio(dimensions: str) -> float:
     return w / h
 
 
-def parse_exact_dimensions(dimensions: str) -> Tuple[int, int]:
+def parse_exact_dimensions(dimensions: str) -> tuple[int, int]:
+    """
+    Parse a string representing exact dimensions (WxH or W:H) and return (width, height) as integers.
+    Raises ValueError for invalid formats or non-positive values.
+    """
     s = dimensions.strip().lower()
     if "x" in s:
         parts = s.split("x", 1)
     elif ":" in s:
         parts = s.split(":", 1)
     else:
-        raise ValueError("Use WxH or W:H format for exact resolution")
+        raise ValueError(
+            f"Use WxH or W:H format for exact resolution, got '{dimensions}'"
+        )
 
     if len(parts) != 2:
-        raise ValueError("Invalid format. Use WxH or W:H")
+        raise ValueError(f"Invalid format. Use WxH or W:H, got '{dimensions}'")
 
     try:
         w, h = map(int, map(str.strip, parts))
@@ -64,6 +74,10 @@ def parse_exact_dimensions(dimensions: str) -> Tuple[int, int]:
 
 
 def align(value: float, block: int) -> int:
+    """
+    Align a value to the nearest multiple of block size (minimum block).
+    Raises ValueError if block is not positive.
+    """
     if block <= 0:
         raise ValueError(f"Block size must be positive, got {block}.")
     return max(block, int(round(value / block)) * block)
@@ -77,6 +91,10 @@ def make_latent(
     device: torch.device,
     dtype=None,
 ) -> dict[str, Any]:
+    """
+    Create a latent tensor dict for ComfyUI, with shape (bs, 4, h//downscale, w//downscale).
+    Always uses intermediate_dtype for compatibility. Raises ValueError for invalid sizes or ratios.
+    """
     if w <= 0 or h <= 0 or bs <= 0:
         raise ValueError(f"Invalid latent size {w}x{h}, batch_size={bs}")
 
@@ -88,16 +106,14 @@ def make_latent(
             f"Width and height must be divisible by spacial_downscale_ratio ({spacial_downscale_ratio}): {w}x{h}"
         )
 
-    if dtype is None:
-        dtype = intermediate_dtype()
+    dtype = intermediate_dtype()
     shape = (
         bs,
         4,
         h // spacial_downscale_ratio,
         w // spacial_downscale_ratio,
     )
-    # Include the downscale ratio so Comfy's sampler can adjust empty latents
-    # for models with different latent formats.
+    # Include the downscale ratio so Comfy's sampler can adjust empty latents for models with different latent formats.
     return {
         "samples": torch.zeros(shape, device=device, dtype=dtype),
         "downscale_ratio_spacial": spacial_downscale_ratio,
