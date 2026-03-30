@@ -3,7 +3,7 @@
 # Config options:
 # block_size: The alignment constraint for pixel dimensions (e.g., must be a multiple of 8).
 # spacial_downscale_ratio: The latent format's total downsampling factor. Pixel dimensions must be a multiple of this value.
-# target_mp: The model's native training resolution in megapixels (e.g., 1024*1024 / (1024*1024) = 1.048576). The node optimizes resolution to be close to this area.
+# target_mp: The model's native training resolution in megapixels (e.g., 1024*1024 / (1024*1024) = 1.0 for 1024x1024). The node optimizes resolution to be close to this area.
 # min_ar: A practical guideline for the minimum aspect ratio to prevent poor composition. Not a hard technical limit.
 # max_ar: A practical guideline for the maximum aspect ratio to prevent poor composition. Not a hard technical limit.
 # search_range: An internal parameter for this node's search algorithm; defines how many block-steps to check around the ideal resolution.
@@ -12,11 +12,11 @@
 Custom:
   block_size: 8
   spacial_downscale_ratio: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
-  rel_ar_tol: 0.01
+  rel_ar_tol: 0.001
   desc: "Custom configuration defaults"
 
 SD1 (512px):
@@ -42,17 +42,17 @@ SD2 (768px):
 SDXL (1024px):
   block_size: 8
   spacial_downscale_ratio: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
-  rel_ar_tol: 0.01
+  rel_ar_tol: 0.001
   desc: "SDXL, 1024x1024, block 8"
 
 SD3 (1024px):
   block_size: 8
   spacial_downscale_ratio: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
@@ -62,7 +62,7 @@ SD3 (1024px):
 FLUX.1 (1024px):
   block_size: 32
   spacial_downscale_ratio: 8
-  target_mp: 1.048576
+  target_mp: 1.0
   min_ar: 0.5
   max_ar: 3.75
   search_range: 10
