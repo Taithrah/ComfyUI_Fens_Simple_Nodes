@@ -110,7 +110,7 @@ class FensTokenCounter(io.ComfyNode):
         """
         if clip is None:
             msg = "No CLIP input connected."
-            logging.warning(f"FensTokenCounter: {msg}")
+            logging.warning("FensTokenCounter: %s", msg)
             return io.NodeOutput(0, 0, 0, msg, text or "")
 
         if not text or not text.strip():
@@ -140,14 +140,12 @@ class FensTokenCounter(io.ComfyNode):
                 token_count = sum(prompt_counts)
                 context_limit_tokens = sum(context_limits)
                 chunk_count = sum(chunk_counts)
-            elif count_strategy == "max_stream":
-                token_count = max(prompt_counts)
-                context_limit_tokens = max(context_limits)
-                chunk_count = max(chunk_counts)
             else:
-                logging.warning(
-                    f"FensTokenCounter: Unknown count_strategy '{count_strategy}', using max_stream."
-                )
+                if count_strategy != "max_stream":
+                    logging.warning(
+                        "FensTokenCounter: Unknown count_strategy %s, using max_stream.",
+                        count_strategy,
+                    )
                 token_count = max(prompt_counts)
                 context_limit_tokens = max(context_limits)
                 chunk_count = max(chunk_counts)
@@ -169,7 +167,9 @@ class FensTokenCounter(io.ComfyNode):
                 details,
                 text,
             )
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             msg = f"Error: {e}"
-            logging.error(f"FensTokenCounter: Failed to tokenize text. {msg}")
+            logging.error("FensTokenCounter: Failed to tokenize text. %s", msg)
             return io.NodeOutput(0, 0, 0, msg, text or "")
+        except Exception:
+            raise

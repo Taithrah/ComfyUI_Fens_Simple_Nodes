@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-import math
 import os
-from typing import Any, Dict
 
 import yaml
-from comfy.model_management import intermediate_device, intermediate_dtype
 from comfy_api.latest import io
 from typing_extensions import override
 
-from .latent_utils import (
-    align,
-    make_latent,
-    parse_exact_dimensions,
-    parse_ratio,
+from .latent_common import (
+    create_latent_for_exact,
+    create_latent_for_optimized,
+    resolve_cfg,
 )
 
 
@@ -99,49 +95,6 @@ class OptiEmptyLatent(io.ComfyNode):
             is_experimental=False,
         )
 
-    PIXEL_SCALE = 1024 * 1024
-
-    @classmethod
-    def _find_resolution(
-        cls, ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
-    ) -> tuple[int, int]:
-        """Find the optimal resolution for a given aspect ratio and MP target."""
-        ideal_px = target_mp * cls.PIXEL_SCALE
-        raw_h = math.sqrt(ideal_px / ar)
-        search_range = int(model_cfg.get("search_range", 5 if block >= 32 else 10))
-        min_ar = float(model_cfg.get("min_ar", 0.5))
-        max_ar = float(model_cfg.get("max_ar", 3.75))
-        best_score = float("inf")
-        best_w = best_h = 0
-        for delta in range(-search_range, search_range + 1):
-            h_try = raw_h + delta * block
-            w_try = ar * h_try
-            w = align(w_try, block)
-            h = align(h_try, block)
-            if w < block or h < block:
-                continue
-            candidate_ar = w / h
-            if candidate_ar < min_ar or candidate_ar > max_ar:
-                continue
-            actual_mp = (w * h) / cls.PIXEL_SCALE
-            mp_error = abs(actual_mp - target_mp) / target_mp
-            ar_error = abs(candidate_ar - ar) / ar
-            mp_weight = 10.0
-            ar_weight = 1.0
-            score = (mp_weight * mp_error) + (ar_weight * ar_error)
-            if abs(score - best_score) < 1e-9:
-                if (w * h) > (best_w * best_h):
-                    best_w, best_h = w, h
-            elif score < best_score:
-                best_score = score
-                best_w, best_h = w, h
-        if best_w == 0 or best_h == 0:
-            raise ValueError(
-                f"No valid resolution found for AR~{ar:.3f}, target {target_mp}MP, "
-                f"block {block}. Try broadening search_range or aspect ratio limits."
-            )
-        return best_w, best_h
-
     @classmethod
     @override
     def execute(
@@ -156,72 +109,36 @@ class OptiEmptyLatent(io.ComfyNode):
         Create an empty latent tensor with optimal or exact resolution.
         Returns latent, width, height, block size, and details string.
         """
-        cfg = cls.MODEL_CONFIG.get(latent_alignment)
-        if cfg is None:
-            msg = f"Error: Unknown latent_alignment '{latent_alignment}'"
+        try:
+            cfg = resolve_cfg(cls.MODEL_CONFIG, latent_alignment)
+        except ValueError as e:
+            msg = f"Error: {e}"
             return io.NodeOutput(None, 0, 0, 0, msg)
         if not optimization:
             try:
-                w, h = parse_exact_dimensions(dimensions)
-                if invert:
-                    w, h = h, w
-                w = align(w, cfg["block_size"])
-                h = align(h, cfg["block_size"])
-                latent = make_latent(
-                    w,
-                    h,
-                    batch_size,
-                    cfg["spacial_downscale_ratio"],
-                    intermediate_device(),
-                    dtype=intermediate_dtype(),
-                )
-                details = (
-                    f"Exact Resolution: {w}x{h} px\n"
-                    f"Aspect Ratio: {w / h:.4f}\n"
-                    f"Block Size: {cfg['block_size']}, VAE Scale: {cfg['spacial_downscale_ratio']}\n"
-                    f"Model: {cfg.get('desc', latent_alignment)}"
+                latent, w, h, details = create_latent_for_exact(
+                    dimensions, invert, cfg, batch_size
                 )
                 # Optionally, provide a UI preview for details (uncomment if desired)
                 # preview = ui.PreviewText(details)
                 return io.NodeOutput(latent, w, h, cfg["block_size"], details)
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 msg = f"Error: {e}"
                 return io.NodeOutput(None, 0, 0, cfg["block_size"], msg)
+            except Exception:
+                # Unexpected error: re-raise to avoid masking bugs.
+                raise
         else:
             try:
-                ar = parse_ratio(dimensions)
-                min_ar = float(cfg.get("min_ar", 0.5))
-                max_ar = float(cfg.get("max_ar", 3.75))
-                clamp_warning = ""
-                if not (min_ar <= ar <= max_ar):
-                    clamp_warning = (
-                        f"⚠️ Dimensions {ar:.3f} are outside recommended range for {latent_alignment} "
-                        f"({min_ar:.2f}-{max_ar:.2f}). Clamping for best results.\n"
-                    )
-                    ar = max(min_ar, min(ar, max_ar))
-                w, h = cls._find_resolution(
-                    ar, cfg["target_mp"], cfg["block_size"], cfg
-                )
-                if invert:
-                    w, h = h, w
-                latent = make_latent(
-                    w,
-                    h,
-                    batch_size,
-                    cfg["spacial_downscale_ratio"],
-                    intermediate_device(),
-                    dtype=intermediate_dtype(),
-                )
-                details = (
-                    f"{clamp_warning}Optimized Resolution: {w}x{h} px\n"
-                    f"Aspect Ratio: {w / h:.4f} (requested: {dimensions})\n"
-                    f"Target MP: {cfg['target_mp']}, Actual MP: {(w * h) / cls.PIXEL_SCALE:.3f}\n"
-                    f"Block Size: {cfg['block_size']}, VAE Scale: {cfg['spacial_downscale_ratio']}\n"
-                    f"Model: {cfg.get('desc', latent_alignment)}"
+                latent, w, h, details = create_latent_for_optimized(
+                    dimensions, invert, cfg, batch_size, latent_alignment
                 )
                 # Optionally, provide a UI preview for details (uncomment if desired)
                 # preview = ui.PreviewText(details)
                 return io.NodeOutput(latent, w, h, cfg["block_size"], details)
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 msg = f"Error: {e}"
                 return io.NodeOutput(None, 0, 0, cfg["block_size"], msg)
+            except Exception:
+                # Unexpected error: re-raise to avoid masking bugs.
+                raise
