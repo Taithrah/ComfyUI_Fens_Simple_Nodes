@@ -30,17 +30,20 @@ The **OptiEmptyLatent** node calculates and generates an empty latent tensor wit
 ## Usage
 
 1. **Optimized Mode (default):**
-  - Enter your desired aspect ratio (e.g. `16:9`, `1.33`, etc.).
-  - Select the model preset (**Latent Alignment**).
-  - The node will output a latent tensor with the optimal resolution for your settings.
 
-2. **Exact Resolution Mode:**
-  - Set **Optimization** to `FALSE`.
-  - Enter your desired resolution in `WxH` or `W:H` format (e.g. `1024x768`).
-  - The node will output a latent tensor with your specified resolution, rounded to the nearest multiple of the model's block size.
+- Enter your desired aspect ratio (e.g. `16:9`, `1.33`, etc.).
+- Select the model preset (**Latent Alignment**).
+- The node will output a latent tensor with the optimal resolution for your settings.
 
-3. **Invert Aspect Ratio:**
-  - Enable **Invert** to swap width and height.
+1. **Exact Resolution Mode:**
+
+- Set **Optimization** to `FALSE`.
+- Enter your desired resolution in `WxH` or `W:H` format (e.g. `1024x768`).
+- The node will output a latent tensor with your specified resolution, rounded to the nearest multiple of the model's block size.
+
+1. **Invert Aspect Ratio:**
+
+- Enable **Invert** to swap width and height.
 
 ## Output
 

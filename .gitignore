@@ -98,6 +98,7 @@ cookiecutter-pypackage-env/
 # vscode settings
 .history/
 *.code-workspace
+.vscode/
 
 # Frontend extension
 node_modules/
@@ -110,5 +111,3 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 node.zip
-.vscode/
-.claude/

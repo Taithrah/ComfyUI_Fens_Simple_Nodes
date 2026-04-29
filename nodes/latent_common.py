@@ -1,25 +1,29 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from comfy.model_management import intermediate_device, intermediate_dtype
 
 from .latent_utils import align, make_latent, parse_exact_dimensions, parse_ratio
 
-PIXEL_SCALE = 1024 * 1024
+PIXEL_SCALE = 1024 * 1024  # Pixels per megapixel
+BLOCK_SIZE_THRESHOLD = 32  # Minimum block size for search
+SCORE_TOLERANCE = 1e-9  # Tolerance for score comparison
 
 
 def find_resolution(
-    ar: float, target_mp: float, block: int, model_cfg: Dict[str, Any]
-) -> Tuple[int, int]:
+    ar: float, target_mp: float, block: int, model_cfg: dict[str, Any]
+) -> tuple[int, int]:
     """Find the optimal resolution for a given aspect ratio and MP target.
 
     This is the shared implementation extracted from multiple nodes.
     """
     ideal_px = target_mp * PIXEL_SCALE
     raw_h = math.sqrt(ideal_px / ar)
-    search_range = int(model_cfg.get("search_range", 5 if block >= 32 else 10))
+    search_range = int(
+        model_cfg.get("search_range", 5 if block >= BLOCK_SIZE_THRESHOLD else 10)
+    )
     min_ar = float(model_cfg.get("min_ar", 0.5))
     max_ar = float(model_cfg.get("max_ar", 3.75))
     best_score = float("inf")
@@ -40,7 +44,7 @@ def find_resolution(
         mp_weight = 10.0
         ar_weight = 1.0
         score = (mp_weight * mp_error) + (ar_weight * ar_error)
-        if abs(score - best_score) < 1e-9:
+        if abs(score - best_score) < SCORE_TOLERANCE:
             if (w * h) > (best_w * best_h):
                 best_w, best_h = w, h
         elif score < best_score:
@@ -70,7 +74,7 @@ def generate_details(
     w: int,
     h: int,
     ar: float,
-    cfg: Dict[str, Any],
+    cfg: dict[str, Any],
     latent_alignment: str,
     clamp_warning: str = "",
 ) -> str:
@@ -87,10 +91,10 @@ def generate_details(
 
 
 def resolve_cfg(
-    model_config: Dict[str, Any],
+    model_config: dict[str, Any],
     latent_alignment: str,
-    custom_overrides: Dict[str, Any] | None = None,
-) -> Dict[str, Any]:
+    custom_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Resolve the effective configuration for a given alignment, applying custom overrides if requested."""
     if latent_alignment == "Custom":
         cfg = model_config.get("Custom", {}).copy()
@@ -104,7 +108,7 @@ def resolve_cfg(
 
 
 def create_latent_for_exact(
-    dimensions: str, invert: bool, cfg: Dict[str, Any], batch_size: int
+    dimensions: str, invert: bool, cfg: dict[str, Any], batch_size: int
 ):
     """Create latent for exact WxH input and return (latent, w, h, details)."""
     w, h = parse_exact_dimensions(dimensions)
@@ -125,7 +129,7 @@ def create_latent_for_exact(
 def create_latent_for_optimized(
     dimensions: str,
     invert: bool,
-    cfg: Dict[str, Any],
+    cfg: dict[str, Any],
     batch_size: int,
     latent_alignment: str,
 ):

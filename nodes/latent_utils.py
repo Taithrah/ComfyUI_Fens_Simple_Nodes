@@ -5,6 +5,8 @@ from typing import Any
 import torch
 from comfy.model_management import intermediate_dtype
 
+_SPLIT_INDEX = 2  # Used for splitting dimension strings (W:H or WxH)
+
 
 def parse_ratio(dimensions: str) -> float:
     """
@@ -25,7 +27,7 @@ def parse_ratio(dimensions: str) -> float:
             raise ValueError(f"Aspect ratio must be positive: '{dimensions}'")
         return value
 
-    if len(parts) != 2:
+    if len(parts) != _SPLIT_INDEX:
         raise ValueError(f"Invalid ratio format. Use W:H or WxH, got '{dimensions}'")
 
     try:
@@ -55,7 +57,7 @@ def parse_exact_dimensions(dimensions: str) -> tuple[int, int]:
             f"Use WxH or W:H format for exact resolution, got '{dimensions}'"
         )
 
-    if len(parts) != 2:
+    if len(parts) != _SPLIT_INDEX:
         raise ValueError(f"Invalid format. Use WxH or W:H, got '{dimensions}'")
 
     try:

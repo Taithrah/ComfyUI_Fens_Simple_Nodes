@@ -20,13 +20,13 @@ class OptiEmptyLatent(io.ComfyNode):
     """
 
     config_path = os.path.join(os.path.dirname(__file__), "model_config.yaml")
-    with open(config_path, "r", encoding="utf-8") as f:
+    with open(config_path, encoding="utf-8") as f:
         MODEL_CONFIG = yaml.safe_load(f)
 
     @classmethod
     @override
     def define_schema(cls) -> io.Schema:
-        alignment_options = [k for k in cls.MODEL_CONFIG.keys() if k != "Custom"]
+        alignment_options = [k for k in cls.MODEL_CONFIG if k != "Custom"]
         return io.Schema(
             node_id="OptiEmptyLatent",
             display_name="Optimal Empty Latent",

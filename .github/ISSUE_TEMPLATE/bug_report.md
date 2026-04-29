@@ -16,9 +16,10 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Information:**
- - Simple Nodes version:
- - Python version:
- - Operating System:
+
+- Simple Nodes version:
+- Python version:
+- Operating System:
 
 **Additional**
 Please include the output from your terminal here.

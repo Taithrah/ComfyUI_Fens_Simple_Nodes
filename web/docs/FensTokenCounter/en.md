@@ -20,10 +20,11 @@ The **FensTokenCounter** node counts typed prompt tokens and also shows the acti
 2. Enter your prompt in the text field.
 3. (Optional) Adjust advanced counting options.
 4. The node outputs:
-  - Typed token count for the prompt.
-  - Current context-limit tier (for example 77 or 154).
-  - Number of tokenizer chunks/windows in use.
-  - The input prompt text (for reference).
+
+- Typed token count for the prompt.
+- Current context-limit tier (for example 77 or 154).
+- Number of tokenizer chunks/windows in use.
+- The input prompt text (for reference).
 
 ## Output
 

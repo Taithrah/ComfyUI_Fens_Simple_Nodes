@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from comfy_api.latest import io
 from typing_extensions import override
@@ -75,13 +75,18 @@ class FensTokenCounter(io.ComfyNode):
             is_experimental=False,
         )
 
+    EXPECTED_TOKEN_COUNT = 3
+
     @classmethod
     def _count_stream_prompt_tokens(cls, stream_batches: list[list[Any]]) -> int:
         """Count non-special tokens in a stream batch."""
         total = 0
         for batch in stream_batches:
             for token_item in batch:
-                if isinstance(token_item, (tuple, list)) and len(token_item) >= 3:
+                if (
+                    isinstance(token_item, (tuple, list))
+                    and len(token_item) >= cls.EXPECTED_TOKEN_COUNT
+                ):
                     word_id = token_item[2]
                     if isinstance(word_id, int) and word_id > 0:
                         total += 1
@@ -101,7 +106,7 @@ class FensTokenCounter(io.ComfyNode):
     def execute(
         cls,
         clip: Any,
-        text: Optional[str] = None,
+        text: str | None = None,
         count_strategy: str = "max_stream",
     ) -> io.NodeOutput:
         """

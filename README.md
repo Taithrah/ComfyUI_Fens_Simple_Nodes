@@ -1,8 +1,6 @@
 <div align="center">
 
-[![English](https://img.shields.io/badge/Languages-English-blue)](README.md)
-[![License](https://img.shields.io/badge/License-GPL3.0-lightgreen)](https://www.gnu.org/licenses/gpl-3.0.en.html)
-[![Submit issue](https://img.shields.io/badge/Submit-issue-pink)](https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/issues)
+[![English](https://img.shields.io/badge/Languages-English-blue)](README.md) [![License](https://img.shields.io/badge/License-GPL3.0-lightgreen)](https://www.gnu.org/licenses/gpl-3.0.en.html) [![Submit issue](https://img.shields.io/badge/Submit-issue-pink)](https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/issues)
 
 </div>
 
@@ -12,7 +10,7 @@
 
 **A suite of custom nodes designed for simplicity, flexibility, and power.**
 
-## 🚀 How to Use
+## How to Use
 
 1. **Install:**  
    - Find `Fens-Simple-Nodes` in ComfyUI-Manager, **or**  
@@ -22,11 +20,10 @@
 
 3. **Drag the nodes into your workflow and enjoy!**
 
-## 🌟 What’s Inside?
+## What’s Included
 
 - **Token Counter:**  
-  Instantly count typed prompt tokens and see your current context window tier using your connected ComfyUI IO.CLIP text encoder.  
-  Great for prompt engineering, troubleshooting, or just curiosity!
+  Count typed prompt tokens and see your current context window tier using your connected text encoder.
 
 - **Optimal Empty Latent:**  
   Quickly get the perfect image size for your model and aspect ratio.  
@@ -36,7 +33,7 @@
   - Presets for SD1, SD2, SDXL, and more.
   - Supports batch generation.
 
-## 🖼️ Screenshots
+## Screenshots
 
 **Token Counter Example:**  
 ![TokenCount](https://raw.githubusercontent.com/Taithrah/ComfyUI_Fens_Simple_Nodes/refs/heads/main/examples/TokenCount.webp)
