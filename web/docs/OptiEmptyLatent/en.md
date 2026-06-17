@@ -21,7 +21,7 @@ The **OptiEmptyLatent** node calculates and generates an empty latent tensor wit
   - `FALSE`: Uses your provided resolution (must be in `WxH` or `W:H` format).
 
 - **Latent Alignment**
-  - Model preset. Selects the optimization preset for the model type (e.g. SDXL, SD1.5, SD2, FLUX).
+  - Model preset. Selects the optimization preset for the model type (e.g. SDXL, SD1.5, SD2, FLUX, Anima/Cosmos-Predict2).
   - Each preset has its own block size, channel count, and recommended aspect ratio range.
 
 - **Batch Size**

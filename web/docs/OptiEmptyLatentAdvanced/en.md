@@ -21,18 +21,19 @@ The **OptiEmptyLatentAdvanced** node is an advanced version of OptiEmptyLatent. 
   - `FALSE`: Uses your provided resolution (must be in `WxH` or `W:H` format).
 
 - **Latent Alignment**
-  - Model preset. Selects the optimization preset for the model type (e.g. SDXL, SD1.5, SD2, FLUX, or Custom).
+  - Model preset. Selects the optimization preset for the model type (e.g. SDXL, SD1.5, SD2, FLUX, Anima/Cosmos-Predict2, or Custom).
   - Each preset has its own block size, channel count, and recommended aspect ratio range.
   - Select **Custom** to manually set the following parameters:
     - **Block Size**: The minimum multiple for width/height.
     - **VAE Scale Factor**: The VAE's total downsampling factor.
     - **Target MP**: Target megapixels.
     - **Search Range**: Search range for optimization. Higher values search more possibilities (may increase calculation time).
+    - **Channels**: Latent channel count (e.g. 4 for SD1/SDXL, 16 for FLUX/Cosmos-Predict2-family).
 
 - **Batch Size**
   - Number of latent images in the batch (higher values increase VRAM usage).
 
-*Note: Block Size, VAE Scale Factor, Target MP, and Search Range are only editable when Latent Alignment is set to Custom.*
+*Note: Block Size, VAE Scale Factor, Target MP, Search Range, and Channels are only editable when Latent Alignment is set to Custom.*
 
 ## Usage
 

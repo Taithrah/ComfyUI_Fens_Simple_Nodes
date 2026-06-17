@@ -92,10 +92,11 @@ def make_latent(
     spacial_downscale_ratio: int,
     device: torch.device,
     dtype=None,
+    channels: int = 4,
 ) -> dict[str, Any]:
     """
-    Create a latent tensor dict for ComfyUI, with shape (bs, 4, h//downscale, w//downscale).
-    Always uses intermediate_dtype for compatibility. Raises ValueError for invalid sizes or ratios.
+    Create a latent tensor dict for ComfyUI, with shape (bs, channels, h//downscale, w//downscale).
+    Raises ValueError for invalid sizes or ratios.
     """
     if w <= 0 or h <= 0 or bs <= 0:
         raise ValueError(f"Invalid latent size {w}x{h}, batch_size={bs}")
@@ -103,20 +104,20 @@ def make_latent(
     if spacial_downscale_ratio <= 0:
         raise ValueError(f"Invalid downscale ratio {spacial_downscale_ratio}")
 
+    if channels <= 0:
+        raise ValueError(f"Invalid channel count {channels}")
+
     if w % spacial_downscale_ratio != 0 or h % spacial_downscale_ratio != 0:
         raise ValueError(
             f"Width and height must be divisible by spacial_downscale_ratio ({spacial_downscale_ratio}): {w}x{h}"
         )
 
-    dtype = intermediate_dtype()
+    if dtype is None:
+        dtype = intermediate_dtype()
     shape = (
         bs,
-        4,
+        channels,
         h // spacial_downscale_ratio,
         w // spacial_downscale_ratio,
     )
-    # Include the downscale ratio so Comfy's sampler can adjust empty latents for models with different latent formats.
-    return {
-        "samples": torch.zeros(shape, device=device, dtype=dtype),
-        "downscale_ratio_spacial": spacial_downscale_ratio,
-    }
+    return {"samples": torch.zeros(shape, device=device, dtype=dtype)}

@@ -119,6 +119,16 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     advanced=True,
                     tooltip="Search range for optimization. Higher values search more possibilities. (Only used when 'Custom' is selected.)",
                 ),
+                io.Int.Input(
+                    "channels",
+                    display_name="Channels",
+                    display_mode=io.NumberDisplay.slider,
+                    default=cls.MODEL_CONFIG["Custom"].get("channels", 4),
+                    min=1,
+                    max=128,
+                    advanced=True,
+                    tooltip="Latent channel count (e.g. 4 for SD1/SDXL, 16 for FLUX/Cosmos-Predict2-family). (Only used when 'Custom' is selected.)",
+                ),
             ],
             outputs=[
                 io.Latent.Output(
@@ -153,6 +163,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
         spacial_downscale_ratio: int,
         target_mp: float,
         search_range: int,
+        channels: int,
     ) -> io.NodeOutput:
         try:
             custom_overrides = None
@@ -162,6 +173,7 @@ class OptiEmptyLatentAdvanced(io.ComfyNode):
                     "spacial_downscale_ratio": spacial_downscale_ratio,
                     "target_mp": target_mp,
                     "search_range": search_range,
+                    "channels": channels,
                 }
             cfg = resolve_cfg(cls.MODEL_CONFIG, latent_alignment, custom_overrides)
         except ValueError as e:

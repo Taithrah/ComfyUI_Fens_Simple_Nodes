@@ -41,7 +41,7 @@
   },
   "OptiEmptyLatent": {
     "display_name": "Optimal Empty Latent",
-    "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, and other SD-like architectures. Only preset model configurations are available. Allows exact resolution input when optimization is disabled.",
+    "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, FLUX, and other SD/DiT-like architectures. Only preset model configurations are available. Allows exact resolution input when optimization is disabled.",
     "inputs": {
       "dimensions": {
         "name": "Dimensions",
@@ -126,6 +126,10 @@
       "search_range": {
         "name": "Search Range",
         "tooltip": "Search range for optimization. Higher values search more possibilities. (Only used when 'Custom' is selected.)"
+      },
+      "channels": {
+        "name": "Channels",
+        "tooltip": "Latent channel count (e.g. 4 for SD1/SDXL, 16 for FLUX/Cosmos-Predict2-family). (Only used when 'Custom' is selected.)"
       }
     },
     "outputs": {

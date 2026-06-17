@@ -126,6 +126,10 @@
       "search_range": {
         "name": "搜索范围",
         "tooltip": "优化搜索范围。值越大搜索可能性越多（仅在自定义模式下使用）。"
+      },
+      "channels": {
+        "name": "通道数",
+        "tooltip": "潜变量通道数（例如SD1/SDXL为4，FLUX/Cosmos-Predict2系列为16）（仅在自定义模式下使用）。"
       }
     },
     "outputs": {
