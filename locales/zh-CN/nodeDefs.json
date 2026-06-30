@@ -14,6 +14,10 @@
       "count_strategy": {
         "name": "计数策略",
         "tooltip": "在分词器分支（如 l/g/t5xxl）之间聚合计数：max_stream 取最大分支计数，sum_streams 为所有分支求和。"
+      },
+      "show_token_breakdown": {
+        "name": "显示令牌明细",
+        "tooltip": "在详情输出中附加每个分支的逐令牌明细（ID、解码文本、权重、词ID）。"
       }
     },
     "outputs": {

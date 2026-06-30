@@ -14,6 +14,10 @@
       "count_strategy": {
         "name": "Count Strategy",
         "tooltip": "How to aggregate counts across tokenizer branches (e.g. l/g/t5xxl): max_stream = largest branch count, sum_streams = sum of all branches."
+      },
+      "show_token_breakdown": {
+        "name": "Show Token Breakdown",
+        "tooltip": "Append a per-token breakdown (id, decoded text, weight, word id) for each stream to the Details output."
       }
     },
     "outputs": {

@@ -45,6 +45,13 @@ class FensTokenCounter(io.ComfyNode):
                     advanced=True,
                     tooltip="How to aggregate counts across tokenizer branches (e.g. l/g/t5xxl): max_stream = largest branch count, sum_streams = sum of all branches.",
                 ),
+                io.Boolean.Input(
+                    "show_token_breakdown",
+                    display_name="Show Token Breakdown",
+                    default=False,
+                    advanced=True,
+                    tooltip="Append a per-token breakdown (id, decoded text, weight, word id) for each stream to the Details output.",
+                ),
             ],
             outputs=[
                 io.Int.Output(
@@ -55,7 +62,7 @@ class FensTokenCounter(io.ComfyNode):
                 io.Int.Output(
                     "context_limit_tokens",
                     display_name="Context Limit Tokens",
-                    tooltip="Total available tokens in the active context window tier (e.g. 77, 154, 231).",
+                    tooltip="Total padded slots in the active context window/floor (e.g. 77/154/231 for CLIP-style encoders). For unbounded encoders like T5XXL/Qwen3-family, this is just their minimum padding floor, not a hard ceiling.",
                 ),
                 io.Int.Output(
                     "chunk_count",
@@ -65,7 +72,7 @@ class FensTokenCounter(io.ComfyNode):
                 io.String.Output(
                     "details",
                     display_name="Details",
-                    tooltip="Human-readable summary of typed tokens and context usage.",
+                    tooltip="Human-readable summary of typed tokens and context usage. Includes a per-token breakdown when Show Token Breakdown is enabled.",
                 ),
                 io.String.Output(
                     "text",
@@ -77,6 +84,7 @@ class FensTokenCounter(io.ComfyNode):
         )
 
     EXPECTED_TOKEN_COUNT = 3
+    MIN_TOKEN_WEIGHT_TUPLE_LEN = 2  # Minimum length for a (token_id, weight) tuple
     MIN_WEIGHT_SEGMENT_LEN = 2  # Minimum length for weight syntax: "(x)"
 
     @classmethod
@@ -254,6 +262,98 @@ class FensTokenCounter(io.ComfyNode):
         return sum(len(batch) for batch in stream_batches)
 
     @classmethod
+    def _resolve_sub_tokenizer(cls, clip: Any, stream_name: str) -> Any | None:
+        """
+        Find the underlying per-stream tokenizer object for a given stream
+        name (e.g. "l", "g", "t5xxl", "qwen3_06b"), so its vocabulary can be
+        used to decode token ids back to text.
+
+        ComfyUI's tokenizer wrapper classes store each sub-tokenizer as an
+        attribute, but the attribute naming convention differs by class:
+        some wrappers (e.g. SD1/SDXL/Flux's CLIP streams) prefix it with
+        "clip_" (stream "l" -> attribute "clip_l"), while others (e.g.
+        Anima's qwen3_06b/t5xxl) use the stream name directly with no
+        prefix. Both are real, currently-used ComfyUI conventions, so we
+        just try both rather than guessing a single one.
+        """
+        tokenizer = getattr(clip, "tokenizer", None)
+        if tokenizer is None:
+            return None
+        for attr_name in (stream_name, f"clip_{stream_name}"):
+            sub_tokenizer = getattr(tokenizer, attr_name, None)
+            if sub_tokenizer is not None:
+                return sub_tokenizer
+        return None
+
+    @classmethod
+    def _decode_token_id(cls, sub_tokenizer: Any, token_id: Any) -> str | None:
+        """
+        Decode a single token id back to its text using the sub-tokenizer's
+        vocabulary, if available. Returns None if it can't be resolved
+        (e.g. unsupported tokenizer object, or the id isn't an int - it
+        could be a raw embedding tensor for custom/textual-inversion
+        embeddings, which has no vocab entry).
+        """
+        if sub_tokenizer is None or not isinstance(token_id, int):
+            return None
+        inv_vocab = getattr(sub_tokenizer, "inv_vocab", None)
+        if inv_vocab is not None:
+            token_str = inv_vocab.get(token_id)
+            if token_str is not None:
+                return token_str
+        decode_fn = getattr(sub_tokenizer, "decode", None)
+        if callable(decode_fn):
+            try:
+                return decode_fn([token_id])
+            except Exception:
+                return None
+        return None
+
+    @classmethod
+    def _build_token_breakdown(
+        cls, clip: Any, token_streams: dict[str, list[list[Any]]]
+    ) -> str:
+        """
+        Build a human-readable per-token breakdown for every stream: each
+        real (non-padding) token's id, decoded text, weight, and word id.
+        """
+        lines = []
+        for stream_name, stream_batches in token_streams.items():
+            sub_tokenizer = cls._resolve_sub_tokenizer(clip, stream_name)
+            lines.append(f"[{stream_name}]")
+            position = 0
+            for batch in stream_batches:
+                for token_item in batch:
+                    if (
+                        isinstance(token_item, (tuple, list))
+                        and len(token_item) >= cls.EXPECTED_TOKEN_COUNT
+                    ):
+                        token_id, weight, word_id = (
+                            token_item[0],
+                            token_item[1],
+                            token_item[2],
+                        )
+                    elif (
+                        isinstance(token_item, (tuple, list))
+                        and len(token_item) >= cls.MIN_TOKEN_WEIGHT_TUPLE_LEN
+                    ):
+                        token_id, weight, word_id = token_item[0], token_item[1], None
+                    else:
+                        token_id, weight, word_id = token_item, 1.0, None
+
+                    if isinstance(word_id, int) and word_id <= 0:
+                        position += 1
+                        continue  # skip special/padding tokens in the breakdown
+
+                    decoded = cls._decode_token_id(sub_tokenizer, token_id)
+                    decoded_str = repr(decoded) if decoded is not None else "?"
+                    lines.append(
+                        f"  [{position}] id={token_id} text={decoded_str} weight={weight} word_id={word_id}"
+                    )
+                    position += 1
+        return "\n".join(lines)
+
+    @classmethod
     def _split_on_break(cls, text: str) -> list[str]:
         """
         Split text on BREAK operations and remove BREAK from segments.
@@ -348,6 +448,7 @@ class FensTokenCounter(io.ComfyNode):
         clip: Any,
         text: str | None = None,
         count_strategy: str = "max_stream",
+        show_token_breakdown: bool = False,
     ) -> io.NodeOutput:
         """
         Count prompt tokens and context window usage for a given text and CLIP object.
@@ -361,6 +462,8 @@ class FensTokenCounter(io.ComfyNode):
           encoders like Qwen3/T5/Llama-style text encoders)
         - Supports multi-encoder models (SD1, SDXL, Flux, Anima, etc.)
         - Shows chunk count and context window usage
+        - Optionally appends a per-token breakdown (id, decoded text,
+          weight, word id) per stream to the Details output
 
         Returns:
             tuple: (total_tokens, context_limit, chunk_count, details, text_echo)
@@ -414,6 +517,11 @@ class FensTokenCounter(io.ComfyNode):
                 details_parts.append(f"Functions: {func_str}")
 
             details = " | ".join(details_parts)
+
+            if show_token_breakdown:
+                breakdown = cls._build_token_breakdown(clip, token_streams)
+                if breakdown:
+                    details = f"{details}\n\nToken breakdown:\n{breakdown}"
 
             return io.NodeOutput(
                 final_token_count,
