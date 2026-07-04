@@ -83,8 +83,8 @@ Anima (1024px):
   block_size: 16
   spacial_downscale_ratio: 8
   target_mp: 1.0
-  min_ar: 0.4
-  max_ar: 2.5
+  min_ar: 0.5
+  max_ar: 2.0
   search_range: 15
   channels: 16
-  desc: "Anima (circlestone-labs), Cosmos-Predict2 DiT (patch 2x2) + Qwen-Image VAE (z_dim=16, 8x), ~1MP native (1024x1024/896x1152), AR capped <2.5 to stay clear of the model's ~2MP breakdown point"
+  desc: "Anima (circlestone-labs), Cosmos-Predict2 DiT (patch 2x2) + Qwen-Image VAE (z_dim=16, 8x), trained at 512^2/1024^2/1536^2 with AR range 0.5-2.0 (9 buckets), ~1MP recommended"
