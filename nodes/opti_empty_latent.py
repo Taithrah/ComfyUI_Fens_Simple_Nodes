@@ -69,6 +69,7 @@ class OptiEmptyLatent(io.ComfyNode):
                 io.Int.Input(
                     "batch_size",
                     display_name="Batch Size",
+                    display_mode=io.NumberDisplay.slider,
                     default=1,
                     min=1,
                     max=4096,

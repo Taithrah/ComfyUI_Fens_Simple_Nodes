@@ -22,16 +22,23 @@
 
 ## What’s Included
 
-- **Token Counter:**  
+- **Token Counter:**
   Count typed prompt tokens and see your current context window tier using your connected text encoder.
 
-- **Optimal Empty Latent:**  
+- **Optimal Empty Latent:**
   Quickly get the perfect image size for your model and aspect ratio.  
   - Enter aspect ratio as `16:9`, `1920x1080`, or even `1.7778`
   - Let the node pick the best resolution for your model, or set your own.
   - Easily swap between portrait and landscape.
   - Presets for SD1, SD2, SDXL, and more.
   - Supports batch generation.
+
+- **Anima LoRA Remap:**
+  Anima 2.9B and 3.8B are bigger, expanded versions of the base Anima 2B model. A LoRA trained on the smaller model doesn't line up correctly on the bigger one by default.
+  It still loads and runs, but with no warning that it's landing on the wrong layers, usually giving weaker, off or no result at all. These node fix that automatically.
+  - Add the node right after your model loader, and **before** any LoRA loader or LoRA stack node so it just passes the model through, ready for LoRAs to be applied correctly downstream.
+  - Two versions, both for LoRAs trained on **Anima 2B** — one to use with the 2.9B model, and one to use with the 3.8B model.
+  - Works with whatever LoRA loader or stacker you already use, so need to switch nodes.
 
 ## Screenshots
 

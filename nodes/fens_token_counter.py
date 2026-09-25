@@ -37,14 +37,6 @@ class FensTokenCounter(io.ComfyNode):
                     tooltip="The text to be encoded or counted.",
                     optional=True,
                 ),
-                io.Combo.Input(
-                    "count_strategy",
-                    display_name="Count Strategy",
-                    options=["max_stream", "sum_streams"],
-                    default="max_stream",
-                    advanced=True,
-                    tooltip="How to aggregate counts across tokenizer branches (e.g. l/g/t5xxl): max_stream = largest branch count, sum_streams = sum of all branches.",
-                ),
                 io.Boolean.Input(
                     "show_token_breakdown",
                     display_name="Show Token Breakdown",
@@ -62,7 +54,7 @@ class FensTokenCounter(io.ComfyNode):
                 io.Int.Output(
                     "context_limit_tokens",
                     display_name="Context Limit Tokens",
-                    tooltip="Total padded slots in the active context window/floor (e.g. 77/154/231 for CLIP-style encoders). For unbounded encoders like T5XXL/Qwen3-family, this is just their minimum padding floor, not a hard ceiling.",
+                    tooltip="Total padded slots in the active context window/floor (e.g. 77/154/231 for CLIP-style encoders). For unbounded encoders like T5XXL/Qwen3-family, this is just their minimum padding floor, not a hard ceiling. Only counts streams whose encoder is actually loaded - tokenizer-only streams with no backing model (e.g. Anima's unused t5xxl) are excluded automatically.",
                 ),
                 io.Int.Output(
                     "chunk_count",
@@ -218,9 +210,14 @@ class FensTokenCounter(io.ComfyNode):
             "CUT",
         ]
         for func in special_functions:
-            # Match function name followed by either ( or whitespace/punctuation/end
+            # Match function name followed by either ( or whitespace/punctuation/end.
+            # NOTE: intentionally case-sensitive (no re.IGNORECASE) - several of
+            # these keywords (AND, CUT, SHIFT, STYLE) are also ordinary English
+            # words, so case-insensitive matching false-positives on normal prose
+            # (e.g. "her hair and uniform" was matching the AND function). Prompt
+            # syntax functions are conventionally typed in caps, same as BREAK.
             pattern = rf"(?:^|\s|[,;(]){func}(?:\s*\(|(?:\s|$|[,;)]))"
-            if re.search(pattern, text, re.IGNORECASE):
+            if re.search(pattern, text):
                 analysis["special_functions"].append(func)
 
         # First escape important characters
@@ -232,14 +229,62 @@ class FensTokenCounter(io.ComfyNode):
         return cleaned, analysis
 
     @classmethod
-    def _count_stream_prompt_tokens(cls, stream_batches: list[list[Any]]) -> int:
+    def _resolve_special_token_ids(cls, sub_tokenizer: Any) -> set[int]:
+        """
+        Best-effort resolution of special/padding token ids for a given
+        sub-tokenizer. Used as a fallback for streams that don't carry
+        reliable per-token word_id metadata (e.g. some unbounded LLM-style
+        encoders such as Qwen3/T5 may hand back (token_id, weight) pairs
+        rather than the (token_id, weight, word_id) triples CLIP-style
+        tokenizers use), so we still have some way to exclude BOS/EOS/pad
+        tokens instead of silently counting everything as real content.
+
+        ComfyUI's SDTokenizer wrapper (which Qwen3-/T5-style tokenizers are
+        built on, e.g. Anima's qwen3_06b/t5xxl) stores these as
+        `pad_token`/`start_token`/`end_token` - no "_id" suffix, and no
+        separate bos/eos naming. We check those first, then also check the
+        underlying HuggingFace tokenizer (`sub_tokenizer.tokenizer`) for its
+        standard `*_token_id` attributes, in case a future/unfamiliar
+        tokenizer wrapper doesn't follow the SDTokenizer shape.
+        """
+        ids: set[int] = set()
+        if sub_tokenizer is None:
+            return ids
+        for attr in ("pad_token", "start_token", "end_token"):
+            value = getattr(sub_tokenizer, attr, None)
+            if isinstance(value, int):
+                ids.add(value)
+        hf_tokenizer = getattr(sub_tokenizer, "tokenizer", None)
+        for attr in ("pad_token_id", "bos_token_id", "eos_token_id"):
+            value = getattr(hf_tokenizer, attr, None)
+            if isinstance(value, int):
+                ids.add(value)
+        return ids
+
+    @classmethod
+    def _count_stream_prompt_tokens(
+        cls,
+        stream_batches: list[list[Any]],
+        special_ids: set[int] | None = None,
+    ) -> int:
         """
         Count non-special tokens in a stream batch.
 
         Each token in a batch is typically a tuple: (token_id, weight, word_id)
         We count entries with positive word_id to filter out special tokens
         like start/end/padding tokens (which have word_id <= 0).
+
+        Some tokenizer streams (e.g. Qwen3/T5-style unbounded encoders) may
+        not populate word_id at all - in that case we can't distinguish real
+        tokens from padding/special tokens by word_id, so we fall back to
+        excluding only ids we can positively identify as special via
+        `special_ids` (resolved from the tokenizer's pad/bos/eos attributes).
+        This avoids the previous behavior of unconditionally counting every
+        non-triple token entry as real content, which silently included
+        padding/special tokens whenever a stream's tuples didn't match the
+        3-element (token_id, weight, word_id) shape.
         """
+        special_ids = special_ids or set()
         total = 0
         for batch in stream_batches:
             for token_item in batch:
@@ -247,13 +292,27 @@ class FensTokenCounter(io.ComfyNode):
                     isinstance(token_item, (tuple, list))
                     and len(token_item) >= cls.EXPECTED_TOKEN_COUNT
                 ):
-                    word_id = token_item[2]
+                    token_id, word_id = token_item[0], token_item[2]
                     if isinstance(word_id, int) and word_id > 0:
                         total += 1
+                    elif (
+                        word_id is None
+                        and isinstance(token_id, int)
+                        and token_id not in special_ids
+                    ):
+                        # No word_id metadata for this stream - fall back to
+                        # identifying specials by id instead of counting blind.
+                        total += 1
+                elif (
+                    isinstance(token_item, (tuple, list))
+                    and len(token_item) >= cls.MIN_TOKEN_WEIGHT_TUPLE_LEN
+                ):
+                    token_id = token_item[0]
+                    if isinstance(token_id, int) and token_id not in special_ids:
+                        total += 1
                 elif isinstance(token_item, int):
-                    total += 1
-                else:
-                    total += 1
+                    if token_item not in special_ids:
+                        total += 1
         return total
 
     @classmethod
@@ -286,6 +345,84 @@ class FensTokenCounter(io.ComfyNode):
         return None
 
     @classmethod
+    def _resolve_sub_encoder_model(
+        cls, clip: Any, stream_name: str
+    ) -> tuple[Any | None, bool]:
+        """
+        Find the underlying per-stream *encoder model* submodule for a given
+        stream name (as opposed to _resolve_sub_tokenizer, which finds the
+        tokenizer). This is used to tell whether a stream is actually backed
+        by loaded weights.
+
+        ComfyUI's tokenizer wrapper classes are cheap and typically
+        instantiate every sub-tokenizer they know about unconditionally
+        (e.g. Anima's tokenizer wrapper always builds both a qwen3_06b and
+        a t5xxl tokenizer). The encoder *model* classes, however, only
+        build a submodule for an encoder if the checkpoint actually
+        contains weights for it (this is how multi-encoder architectures
+        like SD3/Flux work: which of clip_l/clip_g/t5xxl get built depends
+        on what's present in the loaded state dict). So checking the model
+        side rather than the tokenizer side tells us which streams are
+        real vs. tokenizer-only scaffolding with nothing backing them.
+
+        Returns:
+            (sub_model_or_None, model_lookup_succeeded) - the second value
+            is False only when we couldn't find any cond_stage_model object
+            to inspect at all (unfamiliar CLIP wrapper shape), so callers
+            can distinguish "confirmed absent" from "couldn't check."
+        """
+        cond_stage_model = getattr(clip, "cond_stage_model", None)
+        if cond_stage_model is None:
+            patcher = getattr(clip, "patcher", None)
+            cond_stage_model = getattr(patcher, "model", None) if patcher else None
+        if cond_stage_model is None:
+            return None, False
+        for attr_name in (stream_name, f"clip_{stream_name}"):
+            sub_model = getattr(cond_stage_model, attr_name, None)
+            if sub_model is not None:
+                return sub_model, True
+        return None, True
+
+    @classmethod
+    def _filter_active_streams(
+        cls, clip: Any, token_streams: dict[str, list[list[Any]]]
+    ) -> tuple[dict[str, list[list[Any]]], list[str]]:
+        """
+        Drop streams whose encoder model isn't actually loaded, so
+        tokenizer-only streams (e.g. Anima's t5xxl, which is tokenized but
+        never has a corresponding model loaded since Anima checkpoints only
+        ship qwen3_06b weights) don't get counted as if they mattered.
+
+        If we can't find a cond_stage_model to inspect at all (unfamiliar
+        CLIP wrapper shape), we leave every stream in place rather than
+        guessing - it's safer to include an extra stream than to silently
+        drop a real one.
+
+        Returns:
+            (filtered_token_streams, excluded_stream_names)
+        """
+        active_streams: dict[str, list[list[Any]]] = {}
+        excluded: list[str] = []
+        for stream_name, stream_batches in token_streams.items():
+            sub_model, model_lookup_succeeded = cls._resolve_sub_encoder_model(
+                clip, stream_name
+            )
+            if sub_model is not None or not model_lookup_succeeded:
+                # Real encoder found, or we couldn't inspect the model at
+                # all - keep the stream rather than risk dropping a real one.
+                active_streams[stream_name] = stream_batches
+            else:
+                excluded.append(stream_name)
+
+        if not active_streams:
+            # Filtering removed everything (shouldn't normally happen) -
+            # fall back to the original unfiltered streams rather than
+            # returning an empty result.
+            return token_streams, []
+
+        return active_streams, excluded
+
+    @classmethod
     def _decode_token_id(cls, sub_tokenizer: Any, token_id: Any) -> str | None:
         """
         Decode a single token id back to its text using the sub-tokenizer's
@@ -294,33 +431,54 @@ class FensTokenCounter(io.ComfyNode):
         could be a raw embedding tensor for custom/textual-inversion
         embeddings, which has no vocab entry).
         """
-        if sub_tokenizer is None or not isinstance(token_id, int):
-            return None
-        inv_vocab = getattr(sub_tokenizer, "inv_vocab", None)
-        if inv_vocab is not None:
-            token_str = inv_vocab.get(token_id)
-            if token_str is not None:
-                return token_str
-        decode_fn = getattr(sub_tokenizer, "decode", None)
-        if callable(decode_fn):
-            try:
-                return decode_fn([token_id])
-            except Exception:
-                return None
-        return None
+        decoded_text: str | None = None
+        if sub_tokenizer is not None and isinstance(token_id, int):
+            inv_vocab = getattr(sub_tokenizer, "inv_vocab", None)
+            if inv_vocab is not None:
+                token_str = inv_vocab.get(token_id)
+                if isinstance(token_str, str):
+                    decoded_text = token_str
+            if decoded_text is None:
+                decode_fn = getattr(sub_tokenizer, "decode", None)
+                if callable(decode_fn):
+                    try:
+                        decoded = decode_fn([token_id])
+                    except Exception:
+                        decoded = None
+                    if isinstance(decoded, str):
+                        decoded_text = decoded
+                    elif (
+                        isinstance(decoded, list)
+                        and decoded
+                        and isinstance(decoded[0], str)
+                    ):
+                        decoded_text = decoded[0]
+        return decoded_text
 
     @classmethod
     def _build_token_breakdown(
-        cls, clip: Any, token_streams: dict[str, list[list[Any]]]
+        cls,
+        clip: Any,
+        token_streams: dict[str, list[list[Any]]],
+        excluded_streams: list[str] | None = None,
     ) -> str:
         """
         Build a human-readable per-token breakdown for every stream: each
         real (non-padding) token's id, decoded text, weight, and word id.
+        Streams in excluded_streams are labeled as not contributing to the
+        totals (no loaded encoder backing them), so it's clear why a
+        stream shown here doesn't affect Prompt tokens/Context limit.
         """
+        excluded_streams = excluded_streams or []
         lines = []
         for stream_name, stream_batches in token_streams.items():
             sub_tokenizer = cls._resolve_sub_tokenizer(clip, stream_name)
-            lines.append(f"[{stream_name}]")
+            label = (
+                f"[{stream_name}] (excluded - no loaded encoder)"
+                if stream_name in excluded_streams
+                else f"[{stream_name}]"
+            )
+            lines.append(label)
             position = 0
             for batch in stream_batches:
                 for token_item in batch:
@@ -404,18 +562,31 @@ class FensTokenCounter(io.ComfyNode):
     @classmethod
     def _process_token_counts(
         cls,
+        clip: Any,
         token_streams: dict[str, list[list[Any]]],
-        count_strategy: str,
     ) -> tuple[int, int, int]:
         """
         Process token streams to get counts and chunks.
+
+        Aggregates via max across streams: parallel multi-encoder
+        architectures (e.g. SD3/Flux's clip_l/clip_g/t5xxl) each encode the
+        SAME full prompt text independently, so summing would just count
+        identical content multiple times - max reflects the actual binding
+        constraint (the stream that fills up first). Streams with no
+        backing encoder model (tokenizer-only scaffolding, e.g. Anima's
+        unused t5xxl) are filtered out before this runs.
 
         Returns:
             Tuple of (token_count, context_limit_tokens, chunk_count)
         """
         prompt_counts = [
-            cls._count_stream_prompt_tokens(stream_batches)
-            for stream_batches in token_streams.values()
+            cls._count_stream_prompt_tokens(
+                stream_batches,
+                cls._resolve_special_token_ids(
+                    cls._resolve_sub_tokenizer(clip, stream_name)
+                ),
+            )
+            for stream_name, stream_batches in token_streams.items()
         ]
         context_limits = [
             cls._stream_context_limit_tokens(stream_batches)
@@ -425,21 +596,44 @@ class FensTokenCounter(io.ComfyNode):
             len(stream_batches) for stream_batches in token_streams.values()
         ]
 
-        if count_strategy == "sum_streams":
-            token_count = sum(prompt_counts)
-            context_limit_tokens = sum(context_limits)
-            chunk_count = sum(chunk_counts)
-        else:
-            if count_strategy != "max_stream":
-                logging.warning(
-                    "FensTokenCounter: Unknown count_strategy %s, using max_stream.",
-                    count_strategy,
-                )
-            token_count = max(prompt_counts)
-            context_limit_tokens = max(context_limits)
-            chunk_count = max(chunk_counts)
+        token_count = max(prompt_counts)
+        context_limit_tokens = max(context_limits)
+        chunk_count = max(chunk_counts)
 
         return token_count, context_limit_tokens, chunk_count
+
+    @classmethod
+    def _build_details_summary(
+        cls,
+        final_token_count: int,
+        context_limit_tokens: int,
+        chunk_count: int,
+        analysis: dict[str, Any],
+        excluded_streams: list[str],
+    ) -> str:
+        """Build the human-readable details summary line."""
+        details_parts = [
+            f"Prompt tokens: {final_token_count}",
+            f"Context limit: {context_limit_tokens}",
+            f"Chunks: {chunk_count}",
+        ]
+        if excluded_streams:
+            details_parts.append(
+                f"Excluded (no loaded encoder): {', '.join(excluded_streams)}"
+            )
+
+        break_count = analysis["break_count"]
+        if break_count > 0:
+            details_parts.append(f"BREAK ops: {break_count}")
+        if analysis["has_escaped_parens"]:
+            details_parts.append("Has escaped parens: Yes")
+
+        special_functions = analysis["special_functions"]
+        if special_functions:
+            func_str = ", ".join(special_functions)
+            details_parts.append(f"Functions: {func_str}")
+
+        return " | ".join(details_parts)
 
     @classmethod
     @override
@@ -447,7 +641,6 @@ class FensTokenCounter(io.ComfyNode):
         cls,
         clip: Any,
         text: str | None = None,
-        count_strategy: str = "max_stream",
         show_token_breakdown: bool = False,
     ) -> io.NodeOutput:
         """
@@ -495,31 +688,30 @@ class FensTokenCounter(io.ComfyNode):
                 msg = "Tokenizer returned no token streams."
                 return io.NodeOutput(0, 0, 0, msg, text)
 
-            # Get token counts and chunk information
-            final_token_count, context_limit_tokens, chunk_count = (
-                cls._process_token_counts(token_streams, count_strategy)
+            # Drop streams with no backing encoder model (tokenizer-only
+            # scaffolding, e.g. Anima's unused t5xxl) so they don't get
+            # counted as if they contributed to conditioning.
+            active_streams, excluded_streams = cls._filter_active_streams(
+                clip, token_streams
             )
 
-            # Build output details
-            details_parts = [
-                f"Prompt tokens: {final_token_count}",
-                f"Context limit: {context_limit_tokens}",
-                f"Chunks: {chunk_count}",
-                f"Strategy: {count_strategy}",
-            ]
+            # Get token counts and chunk information
+            final_token_count, context_limit_tokens, chunk_count = (
+                cls._process_token_counts(clip, active_streams)
+            )
 
-            if break_count > 0:
-                details_parts.append(f"BREAK ops: {break_count}")
-            if analysis["has_escaped_parens"]:
-                details_parts.append("Has escaped parens: Yes")
-            if analysis["special_functions"]:
-                func_str = ", ".join(analysis["special_functions"])
-                details_parts.append(f"Functions: {func_str}")
-
-            details = " | ".join(details_parts)
+            details = cls._build_details_summary(
+                final_token_count,
+                context_limit_tokens,
+                chunk_count,
+                analysis,
+                excluded_streams,
+            )
 
             if show_token_breakdown:
-                breakdown = cls._build_token_breakdown(clip, token_streams)
+                breakdown = cls._build_token_breakdown(
+                    clip, token_streams, excluded_streams
+                )
                 if breakdown:
                     details = f"{details}\n\nToken breakdown:\n{breakdown}"
 

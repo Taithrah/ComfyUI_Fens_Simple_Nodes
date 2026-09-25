@@ -10,10 +10,6 @@ The **FensTokenCounter** node counts typed prompt tokens and also shows the acti
 - **Prompt Text**
   - The text prompt to count tokens for. Supports multiline input and dynamic prompts.
 
-- **Count Strategy** *(Advanced)*
-  - `max_stream`: Uses the largest tokenizer-branch count (recommended for multi-branch text encoders like SDXL/SD3).
-  - `sum_streams`: Sums token counts across all tokenizer branches.
-
 - **Show Token Breakdown** *(Advanced)*
   - When enabled, appends a per-token breakdown (token id, decoded text, weight, and word id) for each tokenizer branch to the **Details** output. Off by default since it can get long for longer prompts.
 
@@ -41,7 +37,7 @@ The **FensTokenCounter** node counts typed prompt tokens and also shows the acti
   - How many tokenizer chunks/windows were needed for the prompt.
 
 - **Details**
-  - A readable summary including prompt tokens, context limit, chunk count, and strategy. Includes a per-token breakdown when Show Token Breakdown is enabled.
+  - A readable summary including prompt tokens, context limit, and chunk count. Includes a per-token breakdown when Show Token Breakdown is enabled.
 
 - **Prompt Text**
   - The input prompt text (multiline string).

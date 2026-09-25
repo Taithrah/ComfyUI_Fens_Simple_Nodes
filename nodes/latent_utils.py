@@ -90,6 +90,7 @@ def make_latent(
     h: int,
     bs: int,
     spacial_downscale_ratio: int,
+    *,
     device: torch.device,
     dtype=None,
     channels: int = 4,

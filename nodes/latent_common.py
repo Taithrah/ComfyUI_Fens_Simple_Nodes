@@ -12,6 +12,18 @@ BLOCK_SIZE_THRESHOLD = 32  # Threshold for adaptive search range
 SCORE_TOLERANCE = 1e-7  # Tolerance for score comparison (relaxed for FP precision)
 
 
+def _within_edge_bounds(
+    w: int,
+    h: int,
+    min_resolution: int | None,
+    max_resolution: int | None,
+) -> bool:
+    """Check whether width/height satisfy optional per-edge resolution bounds."""
+    return (
+        min_resolution is None or (w >= min_resolution and h >= min_resolution)
+    ) and (max_resolution is None or (w <= max_resolution and h <= max_resolution))
+
+
 def find_resolution(
     ar: float, target_mp: float, block: int, model_cfg: dict[str, Any]
 ) -> tuple[int, int]:
@@ -58,6 +70,14 @@ def find_resolution(
     _effective_min_ar = min_ar * (1.0 - block_ar_overshoot)
     _effective_max_ar = max_ar * (1.0 + block_ar_overshoot)
 
+    # Hard floor/ceiling on edge length (independent of aspect ratio). Only
+    # meaningful for models trained on a fixed set of resolution tiers rather
+    # than a continuous MP target - e.g. Anima's 512/1024/1536 tiers. None
+    # (the default) means unbounded, preserving prior behavior for models
+    # that generalize continuously and have no documented hard edge limit.
+    min_resolution = model_cfg.get("min_resolution")
+    max_resolution = model_cfg.get("max_resolution")
+
     best_score = float("inf")
     best_w = best_h = 0
     best_pixels = 0
@@ -72,6 +92,14 @@ def find_resolution(
         if w < block or h < block:
             continue
 
+        # Hard edge-length bounds, independent of aspect ratio - this is
+        # what actually keeps a wide/tall search from producing a resolution
+        # the model was never trained to handle, regardless of what AR
+        # bounds happen to be configured (AR bounds alone don't guarantee
+        # this - see the 1776x592 case that motivated adding this check).
+        if not _within_edge_bounds(w, h, min_resolution, max_resolution):
+            continue
+
         candidate_ar = w / h
         if candidate_ar < _effective_min_ar or candidate_ar > _effective_max_ar:
             continue
@@ -82,9 +110,7 @@ def find_resolution(
         ar_error = abs(candidate_ar - ar) / ar if ar > 0 else 0
 
         # Weighted score: MP accuracy is more critical (10:1)
-        mp_weight = 10.0
-        ar_weight = 1.0
-        score = (mp_weight * mp_error) + (ar_weight * ar_error)
+        score = (10.0 * mp_error) + ar_error
 
         # Tie-breaking: prefer slightly larger resolutions (better detail)
         pixels = w * h
@@ -100,16 +126,27 @@ def find_resolution(
             best_pixels = pixels
 
     if best_w == 0 or best_h == 0:
+        bounds_note = ""
+        if min_resolution is not None or max_resolution is not None:
+            lo = min_resolution if min_resolution is not None else 0
+            hi = max_resolution if max_resolution is not None else "∞"
+            bounds_note = f", resolution bounds [{lo}, {hi}]px per edge"
         raise ValueError(
             f"No valid resolution found for AR~{ar:.3f}, target {target_mp}MP, "
-            f"block {block}. Try broadening search_range or aspect ratio limits."
+            f"block {block}{bounds_note}. Try broadening search_range, aspect "
+            f"ratio limits, or resolution bounds."
         )
 
     return best_w, best_h
 
 
 def create_latent(
-    w: int, h: int, batch_size: int, spacial_downscale_ratio: int, channels: int = 4
+    w: int,
+    h: int,
+    batch_size: int,
+    spacial_downscale_ratio: int,
+    *,
+    channels: int = 4,
 ):
     """Wrapper to create a latent with the project's device/dtype helpers."""
     return make_latent(
@@ -117,7 +154,7 @@ def create_latent(
         h,
         batch_size,
         spacial_downscale_ratio,
-        intermediate_device(),
+        device=intermediate_device(),
         dtype=intermediate_dtype(),
         channels=channels,
     )
@@ -129,6 +166,7 @@ def generate_details(
     ar: float,
     cfg: dict[str, Any],
     latent_alignment: str,
+    *,
     clamp_warning: str = "",
 ) -> str:
     """Generate human-readable details about the latent calculation.
@@ -204,15 +242,40 @@ def create_latent_for_exact(
     block = cfg["block_size"]
     vae_scale = cfg["spacial_downscale_ratio"]
 
+    rounding_warning = ""
     if w % block != 0 or h % block != 0:
+        orig_w, orig_h = w, h
         w = align(w, block)
         h = align(h, block)
-        # Note: alignment is implicit, but should warn user
+        rounding_warning = (
+            f"⚠️ Requested {orig_w}×{orig_h} isn't a multiple of {cfg.get('desc', 'this model')}'s "
+            f"{block}px block size - rounded to {w}×{h}."
+        )
 
-    latent = create_latent(w, h, batch_size, vae_scale, cfg.get("channels", 4))
+    latent = create_latent(
+        w,
+        h,
+        batch_size,
+        vae_scale,
+        channels=cfg.get("channels", 4),
+    )
     actual_ar = w / h
     actual_mp = (w * h) / PIXEL_SCALE
     channels = cfg.get("channels", 4)
+
+    bounds_warning = ""
+    min_resolution = cfg.get("min_resolution")
+    max_resolution = cfg.get("max_resolution")
+    out_of_bounds = (
+        min_resolution is not None and (w < min_resolution or h < min_resolution)
+    ) or (max_resolution is not None and (w > max_resolution or h > max_resolution))
+    if out_of_bounds:
+        lo = min_resolution if min_resolution is not None else 0
+        hi = max_resolution if max_resolution is not None else "∞"
+        bounds_warning = (
+            f"⚠️ Exact resolution {w}×{h} falls outside {cfg.get('desc', 'this model')}'s "
+            f"supported edge range ({lo}-{hi}px per side). Results may be degraded or unreliable."
+        )
 
     details = (
         f"Exact Resolution: {w}×{h} px\n"
@@ -221,6 +284,9 @@ def create_latent_for_exact(
         f"Block Size: {block}px, VAE Scale: {vae_scale}× → {w // vae_scale}×{h // vae_scale}×{channels}ch latent\n"
         f"Model: {cfg.get('desc', 'Custom')}"
     )
+    warnings = [msg for msg in (rounding_warning, bounds_warning) if msg]
+    if warnings:
+        details = "\n".join(warnings) + "\n" + details
     return latent, w, h, details
 
 
@@ -269,7 +335,18 @@ def create_latent_for_optimized(
         w, h = h, w
 
     latent = create_latent(
-        w, h, batch_size, cfg["spacial_downscale_ratio"], cfg.get("channels", 4)
+        w,
+        h,
+        batch_size,
+        cfg["spacial_downscale_ratio"],
+        channels=cfg.get("channels", 4),
     )
-    details = generate_details(w, h, w / h, cfg, latent_alignment, clamp_warning)
+    details = generate_details(
+        w,
+        h,
+        w / h,
+        cfg,
+        latent_alignment,
+        clamp_warning=clamp_warning,
+    )
     return latent, w, h, details

@@ -11,11 +11,13 @@ maintainers = [{ name = "Taithrah" }]
 Repository = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
 bugs = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/issues"
 homepage = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes"
+Documentation = "https://github.com/Taithrah/ComfyUI_Fens_Simple_Nodes/wiki"
 
 [tool.comfy]
 PublisherId = "taithrah"
 DisplayName = "Fens-Simple-Nodes"
 Icon = ""
+includes = []
 
 [tool.ruff]
 line-length = 88

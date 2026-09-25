@@ -1,162 +1,158 @@
 {
-  "FensTokenCounter": {
-    "display_name": "Fens Token Counter",
-    "description": "Count typed prompt tokens and show the active tokenizer context window usage.",
-    "inputs": {
-      "clip": {
-        "name": "Clip",
-        "tooltip": "ComfyUI CLIP object (text encoder stack) from the current workflow."
-      },
-      "text": {
-        "name": "Prompt Text",
-        "tooltip": "The prompt or text to count tokens for."
-      },
-      "count_strategy": {
-        "name": "Count Strategy",
-        "tooltip": "How to aggregate counts across tokenizer branches (e.g. l/g/t5xxl): max_stream = largest branch count, sum_streams = sum of all branches."
-      },
-      "show_token_breakdown": {
-        "name": "Show Token Breakdown",
-        "tooltip": "Append a per-token breakdown (id, decoded text, weight, word id) for each stream to the Details output."
-      }
-    },
-    "outputs": {
-      "total_tokens": {
-        "name": "Token Count",
-        "tooltip": "Typed token count (excluding padding and most special tokens)."
-      },
-      "context_limit_tokens": {
-        "name": "Context Limit",
-        "tooltip": "Total available tokens in the active context window tier (e.g. 77, 154, 231)."
-      },
-      "chunk_count": {
-        "name": "Chunk Count",
-        "tooltip": "Number of tokenizer chunks/windows used for this prompt."
-      },
-      "details": {
-        "name": "Details",
-        "tooltip": "Human-readable summary of typed tokens and context usage."
-      },
-      "text": {
-        "name": "Prompt Text",
-        "tooltip": "The input prompt (multiline string)."
-      }
-    }
-  },
-  "OptiEmptyLatent": {
-    "display_name": "Optimal Empty Latent",
-    "description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, FLUX, and other SD/DiT-like architectures. Only preset model configurations are available. Allows exact resolution input when optimization is disabled.",
-    "inputs": {
-      "dimensions": {
-        "name": "Dimensions",
-        "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
-      },
-      "latent_alignment": {
-        "name": "Latent Alignment",
-        "tooltip": "Optimization preset for model type. Only preset configurations are available."
-      },
-      "optimization": {
-        "name": "Optimization",
-        "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec."
-      },
-      "invert": {
-        "name": "Invert",
-        "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
-      },
-      "batch_size": {
-        "name": "Batch Size",
-        "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
-      }
-    },
-    "outputs": {
-      "latent": {
-        "name": "Latent",
-        "tooltip": "Generated latent tensor for the specified configuration."
-      },
-      "width": {
-        "name": "Width",
-        "tooltip": "Optimal image width (pixels) for the selected aspect ratio and model."
-      },
-      "height": {
-        "name": "Height",
-        "tooltip": "Optimal image height (pixels) for the selected aspect ratio and model."
-      },
-      "block_size": {
-        "name": "Block Size",
-        "tooltip": "Block size used for the calculation."
-      },
-      "details": {
-        "name": "Details",
-        "tooltip": "Details about the calculation and configuration."
-      }
-    }
-  },
-  "OptiEmptyLatentAdvanced": {
-    "display_name": "Optimal Empty Latent (Advanced)",
-    "description": "Advanced optimal empty latent node. Allows custom block size, channels, target MP, and aspect ratio. Supports both optimized and exact resolution modes.",
-    "inputs": {
-      "dimensions": {
-        "name": "Dimensions",
-        "tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
-      },
-      "latent_alignment": {
-        "name": "Latent Alignment",
-        "tooltip": "Optimization preset for model type. Select 'Custom' to set your own parameters."
-      },
-      "optimization": {
-        "name": "Optimization",
-        "tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec."
-      },
-      "invert": {
-        "name": "Invert",
-        "tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
-      },
-      "batch_size": {
-        "name": "Batch Size",
-        "tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
-      },
-      "block_size": {
-        "name": "Block Size",
-        "tooltip": "Pixel dimension alignment constraint. (Only used when 'Custom' is selected.)"
-      },
-      "spacial_downscale_ratio": {
-        "name": "VAE Scale Factor",
-        "tooltip": "The VAE's total downsampling factor. (Only used when 'Custom' is selected.)"
-      },
-      "target_mp": {
-        "name": "Target MP",
-        "tooltip": "Target megapixels. (Only used when 'Custom' is selected.)"
-      },
-      "search_range": {
-        "name": "Search Range",
-        "tooltip": "Search range for optimization. Higher values search more possibilities. (Only used when 'Custom' is selected.)"
-      },
-      "channels": {
-        "name": "Channels",
-        "tooltip": "Latent channel count (e.g. 4 for SD1/SDXL, 16 for FLUX/Cosmos-Predict2-family). (Only used when 'Custom' is selected.)"
-      }
-    },
-    "outputs": {
-      "latent": {
-        "name": "Latent",
-        "tooltip": "Latent tensor"
-      },
-      "width": {
-        "name": "Width",
-        "tooltip": "Width"
-      },
-      "height": {
-        "name": "Height",
-        "tooltip": "Height"
-      },
-      "block_size": {
-        "name": "Block Size",
-        "tooltip": "Block size used for the calculation."
-      },
-      "details": {
-        "name": "Details",
-        "tooltip": "Details about the calculation"
-      }
-    }
-  }
+	"FensTokenCounter": {
+		"display_name": "Fens Token Counter",
+		"description": "Count typed prompt tokens and show the active tokenizer context window usage.",
+		"inputs": {
+			"clip": {
+				"name": "Clip",
+				"tooltip": "ComfyUI CLIP object (text encoder stack) from the current workflow."
+			},
+			"text": {
+				"name": "Prompt Text",
+				"tooltip": "The prompt or text to count tokens for."
+			},
+			"show_token_breakdown": {
+				"name": "Show Token Breakdown",
+				"tooltip": "Append a per-token breakdown (id, decoded text, weight, word id) for each stream to the Details output."
+			}
+		},
+		"outputs": {
+			"total_tokens": {
+				"name": "Token Count",
+				"tooltip": "Typed token count (excluding padding and most special tokens)."
+			},
+			"context_limit_tokens": {
+				"name": "Context Limit",
+				"tooltip": "Total available tokens in the active context window tier (e.g. 77, 154, 231)."
+			},
+			"chunk_count": {
+				"name": "Chunk Count",
+				"tooltip": "Number of tokenizer chunks/windows used for this prompt."
+			},
+			"details": {
+				"name": "Details",
+				"tooltip": "Human-readable summary of typed tokens and context usage."
+			},
+			"text": {
+				"name": "Prompt Text",
+				"tooltip": "The input prompt (multiline string)."
+			}
+		}
+	},
+	"OptiEmptyLatent": {
+		"display_name": "Optimal Empty Latent",
+		"description": "Choose optimal width and height for a given aspect ratio and megapixel target. Supports SD1, SD2, SDXL, FLUX, and other SD/DiT-like architectures. Only preset model configurations are available. Allows exact resolution input when optimization is disabled.",
+		"inputs": {
+			"dimensions": {
+				"name": "Dimensions",
+				"tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
+			},
+			"latent_alignment": {
+				"name": "Latent Alignment",
+				"tooltip": "Optimization preset for model type. Only preset configurations are available."
+			},
+			"optimization": {
+				"name": "Optimization",
+				"tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec."
+			},
+			"invert": {
+				"name": "Invert",
+				"tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
+			},
+			"batch_size": {
+				"name": "Batch Size",
+				"tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
+			}
+		},
+		"outputs": {
+			"latent": {
+				"name": "Latent",
+				"tooltip": "Generated latent tensor for the specified configuration."
+			},
+			"width": {
+				"name": "Width",
+				"tooltip": "Optimal image width (pixels) for the selected aspect ratio and model."
+			},
+			"height": {
+				"name": "Height",
+				"tooltip": "Optimal image height (pixels) for the selected aspect ratio and model."
+			},
+			"block_size": {
+				"name": "Block Size",
+				"tooltip": "Block size used for the calculation."
+			},
+			"details": {
+				"name": "Details",
+				"tooltip": "Details about the calculation and configuration."
+			}
+		}
+	},
+	"OptiEmptyLatentAdvanced": {
+		"display_name": "Optimal Empty Latent (Advanced)",
+		"description": "Advanced optimal empty latent node. Allows custom block size, channels, target MP, and aspect ratio. Supports both optimized and exact resolution modes.",
+		"inputs": {
+			"dimensions": {
+				"name": "Dimensions",
+				"tooltip": "Formats: W:H (e.g. 16:9), WxH (e.g. 1280x720), or decimal (e.g. 1.777). Use WxH when 'Optimization' is FALSE."
+			},
+			"latent_alignment": {
+				"name": "Latent Alignment",
+				"tooltip": "Optimization preset for model type. Select 'Custom' to set your own parameters."
+			},
+			"optimization": {
+				"name": "Optimization",
+				"tooltip": "TRUE: Automatically calculates best resolution for your aspect ratio. FALSE: Use your own resolution (WxH format) - will be model spec."
+			},
+			"invert": {
+				"name": "Invert",
+				"tooltip": "Swap width and height (invert aspect ratio, e.g. 16:9 → 9:16)."
+			},
+			"batch_size": {
+				"name": "Batch Size",
+				"tooltip": "Number of latent images in batch (VRAM usage increases with batch size)."
+			},
+			"block_size": {
+				"name": "Block Size",
+				"tooltip": "Pixel dimension alignment constraint. (Only used when 'Custom' is selected.)"
+			},
+			"spacial_downscale_ratio": {
+				"name": "VAE Scale Factor",
+				"tooltip": "The VAE's total downsampling factor. (Only used when 'Custom' is selected.)"
+			},
+			"target_mp": {
+				"name": "Target MP",
+				"tooltip": "Target megapixels. (Only used when 'Custom' is selected.)"
+			},
+			"search_range": {
+				"name": "Search Range",
+				"tooltip": "Search range for optimization. Higher values search more possibilities. (Only used when 'Custom' is selected.)"
+			},
+			"channels": {
+				"name": "Channels",
+				"tooltip": "Latent channel count (e.g. 4 for SD1/SDXL, 16 for FLUX/Cosmos-Predict2-family). (Only used when 'Custom' is selected.)"
+			}
+		},
+		"outputs": {
+			"latent": {
+				"name": "Latent",
+				"tooltip": "Latent tensor"
+			},
+			"width": {
+				"name": "Width",
+				"tooltip": "Width"
+			},
+			"height": {
+				"name": "Height",
+				"tooltip": "Height"
+			},
+			"block_size": {
+				"name": "Block Size",
+				"tooltip": "Block size used for the calculation."
+			},
+			"details": {
+				"name": "Details",
+				"tooltip": "Details about the calculation"
+			}
+		}
+	}
 }

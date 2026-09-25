@@ -8,6 +8,8 @@
 # max_ar: Maximum aspect ratio (W/H). Inputs outside this range are clamped with a warning. Not a hard technical limit.
 # search_range: How many block-steps to search around the ideal resolution. Higher values find better fits at extreme aspect ratios.
 # channels: The latent format's channel count (e.g., 4 for SD1/SD2/SDXL/SD3, 16 for FLUX/Cosmos-Predict2-family). Optional; defaults to 4 if omitted, for backward compatibility with older config files.
+# min_resolution: Optional hard floor (px) on EITHER edge (width or height), independent of aspect ratio. Unlike min_ar/max_ar (which only bound the ratio between edges), this bounds absolute edge length - needed for models trained on a fixed set of resolution tiers/buckets rather than a continuous MP target (e.g. Anima's 512/1024/1536 tiers). Omit for models that generalize continuously and have no known hard edge floor (SD1/SD2/SDXL/FLUX/etc).
+# max_resolution: Optional hard ceiling (px) on EITHER edge, same rationale as min_resolution above.
 
 Custom:
   block_size: 64
